@@ -20,12 +20,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -O3")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-if (NOT TARGET IIOLIB)
-   include_directories("iio")
-   add_subdirectory(iio)
-endif() 
-SET( LIBS ${LIBS} IIOLIB)
-
 FIND_PACKAGE( OpenMP )
 if(OPENMP_FOUND)
    message("OPENMP FOUND")

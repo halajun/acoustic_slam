@@ -38,28 +38,6 @@ using namespace Diasss;
 
 #define PI 3.14159265
 
-/************ IMG IO  **************/
-
-extern "C" {
-#include "iio.h"
-}
-
-struct Img iio_read_vector_split(char *nm)
-{
-	struct Img out;
-	float *tmpout = iio_read_image_float_split(nm, &out.nx, &out.ny, &out.nch);
-	out.data.assign(tmpout,tmpout + out.nx * out.ny * out.nch);
-	out.npix = out.nx * out.ny;
-	free (tmpout);
-	return out;
-}
-
-void iio_write_vector_split(char *nm, struct Img &out)
-{
-	// .front() -> .data() in C++11
-	iio_save_image_float_split(nm, &(out.data.front()), out.nx, out.ny, out.nch);
-}
-
 
 void remove_nonfinite_values_Img(struct Img &u, float newval) 
 {
