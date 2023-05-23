@@ -1,6 +1,8 @@
 
 #include "FEAmatcher.h"
 #include <bits/stdc++.h>
+#include "patchmatch.h"
+
 
 
 namespace Diasss
@@ -86,7 +88,7 @@ std::vector<cv::Mat> FEAmatcher::IniFlow(Frame &SourceFrame, Frame &TargetFrame)
         }
         
 
-        if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+        if (false) // abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0
         {
             flow_st_x.at<float>(CMindices[i].x,CMindices[i].y) = (img_t.rows - CCindices[NN_index].x - 1) - CMindices[i].x;  
             flow_st_y.at<float>(CMindices[i].x,CMindices[i].y) = (img_t.cols - CCindices[NN_index].y - 1) - CMindices[i].y;
@@ -108,140 +110,437 @@ std::vector<cv::Mat> FEAmatcher::IniFlow(Frame &SourceFrame, Frame &TargetFrame)
         
    
     return flow_st;
-
-    // double sx_min, sy_min, sx_max, sy_max; // geometric border of source image
-    // double tx_min, tx_max, ty_min, ty_max; // geometric border of target image
-
-    // // get boundary of the source geo-image
-    // cv::minMaxLoc(SourceFrame.geo_img[0], &sx_min, &sx_max);
-    // cv::minMaxLoc(SourceFrame.geo_img[1], &sy_min, &sy_max);
-
-    // // get boundary of the target geo-image
-    // cv::minMaxLoc(TargetFrame.geo_img[0], &tx_min, &tx_max);
-    // cv::minMaxLoc(TargetFrame.geo_img[1], &ty_min, &ty_max);
-
-    // // initialize x y and z
-    // cv::Mat ini_flow_s = cv::Mat::zeros(SourceFrame.norm_img.rows, SourceFrame.norm_img.cols, CV_32FC2);
-    // cv::Mat ini_flow_t = cv::Mat::zeros(TargetFrame.norm_img.rows, TargetFrame.norm_img.cols, CV_32FC2);
-
-    // cv::Mat img_s = SourceFrame.norm_img;
-    // cv::Mat img_t = TargetFrame.norm_img;
-    // // if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
-    // //     flip(TargetFrame.norm_img,img_t,-1);
-    // // else
-    // //     img_t = TargetFrame.norm_img;
-
-    // cv::Mat ClusterMembers;
-    // std::vector<cv::Point2i> CMindices;
-    // ClusterMembers.create(cv::Size(2,img_s.rows*img_s.cols), CV_32FC1);
-    // int count = 0;
-    // for (size_t i = 0; i < img_s.rows; i++)
-    // {
-    //     for (size_t j = 0; j < img_s.cols; j++)
-    //     {
-    //         CMindices.push_back(cv::Point2i(i,j));
-    //         double x = SourceFrame.geo_img[0].at<double>(i,j);
-    //         double y = SourceFrame.geo_img[1].at<double>(i,j);
-    //         ClusterMembers.at<float>(count,0) = x;
-    //         ClusterMembers.at<float>(count,1) = y;
-    //         count++;
-    //     }        
-    // }
-
-    // cv::Mat ClusterCenters;
-    // std::vector<cv::Point2i> CCindices;
-    // ClusterCenters.create(cv::Size(2,img_t.rows*img_t.cols), CV_32FC1);
-    // count = 0;
-    // for (size_t i = 0; i < img_t.rows; i++)
-    // {
-    //     for (size_t j = 0; j < img_t.cols; j++)
-    //     {
-    //         CCindices.push_back(cv::Point2i(i,j));
-    //         double x = TargetFrame.geo_img[0].at<double>(i,j);
-    //         double y = TargetFrame.geo_img[1].at<double>(i,j);
-    //         ClusterCenters.at<float>(count,0) = x;
-    //         ClusterCenters.at<float>(count,1) = y;
-    //         count++;
-    //     }        
-    // }
     
-    // cv::Mat matches, distances;
-    // matches.create(cv::Size(1,img_s.rows*img_s.cols), CV_32SC1);
-    // distances.create(cv::Size(1,img_s.rows*img_s.cols), CV_32FC1);
-    // const cvflann::SearchParams params(32); //How many leaves to search in a tree
-    // cv::flann::GenericIndex< cvflann::L2<float> > *kdtrees; // The flann searching tree
-    // kdtrees =  new flann::GenericIndex< cvflann::L2<float> >(ClusterCenters, cvflann::KDTreeIndexParams(4)); // a 4 k-d tree
 
-    // // Search KdTree
-    // kdtrees->knnSearch(ClusterMembers, matches, distances, 1,  cvflann::SearchParams(8));
-    // int NN_index;
-    // float dist;
-    // for(int i = 0; i < img_s.rows*img_s.cols; i++)
-    // {
-    //     NN_index = matches.at<int>(i,0);
-    //     dist = distances.at<float>(i,0);
+}
 
-    //     if (SourceFrame.flt_mask.at<bool>(CMindices[i].x,CMindices[i].y) == 0)
-    //         continue;
+void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
+{
+    bool PLOT_IMG = true;
+    int count = 0, THRES_crosscheck = 3;
 
-    //     if (TargetFrame.flt_mask.at<bool>(CCindices[NN_index].x,CCindices[NN_index].y) == 0)
-    //         continue;
+    // get normalized image;
+    cv::Mat img_s = SourceFrame.norm_img;
+    cv::Mat img_t = TargetFrame.norm_img;
+    cv::Mat img_t_inv;
+    if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+        flip(TargetFrame.norm_img,img_t_inv,-1);
 
-    //     ini_flow_s.at<cv::Vec2f>(CMindices[i].x,CMindices[i].y) = cv::Vec2f(CCindices[NN_index].x, CCindices[NN_index].y);
-    //     // cout << "index and dist: " << NN_index << " " << CCindices[NN_index].x << " " << CCindices[NN_index].y << " " << dist << endl;
-    // }
+    // get initial flow from Dead-reckoning Prior
+    cout << "(1) generating initial flow..." << endl;    
+    std::vector<cv::Mat> ini_flow_st = FEAmatcher::IniFlow(SourceFrame,TargetFrame);
+    cout << "halfway..." << endl;
+    std::vector<cv::Mat> ini_flow_ts = FEAmatcher::IniFlow(TargetFrame,SourceFrame);
+    cout << "completed!" << endl;
 
-    // delete kdtrees;
+    // save flow to Img format
+    struct Img odisp_st(img_s.cols, img_s.rows, 2);
+    count = 0;
+    for (size_t k = 0; k < ini_flow_st.size(); k++)
+        for (size_t m = 0; m < ini_flow_st[k].rows; m++)
+                for (size_t n = 0; n < ini_flow_st[k].cols; n++)
+                {  
+                odisp_st[count] = ini_flow_st[k].at<float>(m,n);
+                count++;
+                }
+    struct Img odisp_ts(img_t.cols, img_t.rows, 2);
+    count = 0;
+    for (size_t k = 0; k < ini_flow_ts.size(); k++)
+        for (size_t m = 0; m < ini_flow_ts[k].rows; m++)
+                for (size_t n = 0; n < ini_flow_ts[k].cols; n++)
+                {  
+                odisp_ts[count] = ini_flow_ts[k].at<float>(m,n);
+                count++;
+                }  
 
-    // // imwritemulti("test.tif", ini_flow_s);
-    // // Util::TiffWrite("test.tif", ini_flow_s);
+    // save normalized image to Img format
+    struct Img img_s_img(img_s.cols, img_s.rows);
+    count = 0;
+    for (size_t m = 0; m < img_s.rows; m++)
+    {
+        for (size_t n = 0; n < img_s.cols; n++)
+        {
+            img_s_img[count] = (float)img_s.at<uchar>(m,n);
+            count++;
+        }    
+    }  
+    struct Img img_t_img(img_t.cols, img_t.rows);
+    count = 0;
+    for (size_t m = 0; m < img_t.rows; m++)
+    {
+        for (size_t n = 0; n < img_t.cols; n++)
+        {
+            img_t_img[count] = (float)img_t.at<uchar>(m,n);
+            count++;
+        }    
+    }
 
 
-    // // main loop
-    // for (size_t i = 0; i < SourceFrame.norm_img.rows; i++)
-    // {
-    //     for (size_t j = 0; j < SourceFrame.norm_img.cols; j++)
-    //     {
-    //         if (SourceFrame.flt_mask.at<bool>(i,j) == 0)
-    //             continue;
+    // get final flow from patchmatch
+    // --- (Img &u1, Img &u2, int w, Img &off, Img &cost,int minoff, int maxoff,  int iterations, int randomtrials, bool use_horizontal_off) --- //
+    int patch_size = 13, minoff = 0, maxoff = 5, iterations = 10, randomtrials = 10;
+    cout << "(2) processing patch matching..." << endl; 
+    struct Img ocost_st(img_s.cols, img_s.rows);
+    patchmatch<distance_patch_NCC>(img_s_img, img_t_img, patch_size, odisp_st, ocost_st, minoff, maxoff, iterations, randomtrials, false);
+    cout << "halfway..." << endl;
+    struct Img ocost_ts(img_t.cols, img_t.rows);
+    patchmatch<distance_patch_NCC>(img_t_img, img_s_img, patch_size, odisp_ts, ocost_ts, minoff, maxoff, iterations, randomtrials, false);
+    cout << "completed!" << endl;
 
-    //         cout << "i and j: " << i << " " << j << endl;
 
-    //         double x = SourceFrame.geo_img[0].at<double>(i,j);
-    //         double y = SourceFrame.geo_img[1].at<double>(i,j);
-            
-    //         cv::Mat diff_x;
-    //         cv::absdiff(TargetFrame.geo_img[0], x, diff_x);
-    //         cv::Mat diff_y;
-    //         cv::absdiff(TargetFrame.geo_img[1], y, diff_y);
+    // --- demonstrate --- //
+    std::vector<cv::DMatch> TemperalMatches;
+    std::vector<cv::KeyPoint> PreKeys, CurKeys;
+    count = 0;
 
-    //         // Calculate L2 distance
-    //         cv::Mat dist = diff_x.mul(diff_x) + diff_y.mul(diff_y);
+    // find good correspondences (dense overlapping version)
+    // nx for column, ny for row
+    cv::Mat corrs_kps_tmp;
+    for (int y=0;y<img_s_img.ny;y++) 
+    {
+        for (int x=0;x<img_s_img.nx;x++) 
+        {
 
-    //         cv::Point minLoc;
-    //         cv::minMaxLoc(dist, 0, 0, &minLoc);
+            const int r_offset = odisp_st(x,y,1);
+            const int c_offset = odisp_st(x,y,0);
 
-    //         if (TargetFrame.flt_mask.at<bool>(minLoc.x,minLoc.y) == 0)
-    //             continue;
+            if (r_offset==0 || c_offset==0)          
+                continue;
 
-    //         cout << "new i and j: " << minLoc.x << " " << minLoc.y << endl;
+            int y_posi_in_t = y+r_offset;
+            int x_posi_in_t = x+c_offset;
 
-    //         ini_flow_s.at<cv::Vec2f>(i,j) = cv::Vec2f(minLoc.x, minLoc.y);
+            if (odisp_ts(x_posi_in_t,y_posi_in_t,1)==0 || odisp_ts(x_posi_in_t,y_posi_in_t,0)==0)         
+                continue;
 
-    //     }
+            const int y_prime = y_posi_in_t + odisp_ts(x_posi_in_t,y_posi_in_t,1);
+            const int x_prime = x_posi_in_t + odisp_ts(x_posi_in_t,y_posi_in_t,0);
+
+            if (y==y_prime && x==x_prime)
+            {
+
+                cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,y,x,y_posi_in_t,x_posi_in_t);
+                corrs_kps_tmp.push_back(temp); 
+
+                PreKeys.push_back(cv::KeyPoint(x,y,0,0,0,-1));
+                if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+                    CurKeys.push_back(cv::KeyPoint(TargetFrame.norm_img.cols-x_posi_in_t-1,TargetFrame.norm_img.rows-y_posi_in_t-1,0,0,0,-1));
+                else                
+                    CurKeys.push_back(cv::KeyPoint(x_posi_in_t,y_posi_in_t,0,0,0,-1));
+                TemperalMatches.push_back(cv::DMatch(count,count,0));
+                count++;
+
+            }       
+
+        }
+    }
+
+    // SAVE RESULTS to IMG_S
+    SourceFrame.corres_kps_dense.push_back(corrs_kps_tmp);
+
+    // plot matches
+    if (PLOT_IMG)
+    {
+        cout << "Good Matches Number: " << count << endl;
+        cv::Mat img_matches;
+        if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+            cv::drawMatches(img_s, PreKeys, img_t_inv, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                            vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        else
+            cv::drawMatches(img_s, PreKeys, img_t, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                            vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);                            
+        cv::namedWindow("temperal matches", cv::WINDOW_NORMAL);
+        cv::imshow("temperal matches", img_matches);
+        cv::waitKey(0);
+    }
+    
+    return;
+}
+
+void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
+{
+    bool PLOT_IMG = true, METRIC_ERROR = true;
+    int count = 0, THRES_crosscheck = 3;
+
+    // get normalized image;
+    cv::Mat img_s = SourceFrame.norm_img;
+    cv::Mat img_t = TargetFrame.norm_img;
+    cv::Mat img_t_inv;
+    if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+        flip(TargetFrame.norm_img,img_t_inv,-1);
+
+    // get initial flow from Dead-reckoning Prior
+    cout << "(1) generating initial flow..." << endl;    
+    std::vector<cv::Mat> ini_flow_st = FEAmatcher::IniFlow(SourceFrame,TargetFrame);
+    cout << "halfway..." << endl;
+    std::vector<cv::Mat> ini_flow_ts = FEAmatcher::IniFlow(TargetFrame,SourceFrame);
+    cout << "completed!" << endl;
+
+    // save flow to Img format
+    struct Img odisp_st(img_s.cols, img_s.rows, 2);
+    struct Img odisp_st_ini(img_s.cols, img_s.rows, 2); // for comparison
+    count = 0;
+    for (size_t k = 0; k < ini_flow_st.size(); k++)
+        for (size_t m = 0; m < ini_flow_st[k].rows; m++)
+                for (size_t n = 0; n < ini_flow_st[k].cols; n++)
+                {  
+                odisp_st[count] = ini_flow_st[k].at<float>(m,n);
+                odisp_st_ini[count] = ini_flow_st[k].at<float>(m,n);
+                count++;
+                }
+    struct Img odisp_ts(img_t.cols, img_t.rows, 2);
+    count = 0;
+    for (size_t k = 0; k < ini_flow_ts.size(); k++)
+        for (size_t m = 0; m < ini_flow_ts[k].rows; m++)
+                for (size_t n = 0; n < ini_flow_ts[k].cols; n++)
+                {  
+                odisp_ts[count] = ini_flow_ts[k].at<float>(m,n);
+                count++;
+                }  
+
+    // save normalized image to Img format
+    struct Img img_s_img(img_s.cols, img_s.rows);
+    count = 0;
+    for (size_t m = 0; m < img_s.rows; m++)
+    {
+        for (size_t n = 0; n < img_s.cols; n++)
+        {
+            img_s_img[count] = (float)img_s.at<uchar>(m,n);
+            count++;
+        }    
+    }  
+    struct Img img_t_img(img_t.cols, img_t.rows);
+    count = 0;
+    for (size_t m = 0; m < img_t.rows; m++)
+    {
+        for (size_t n = 0; n < img_t.cols; n++)
+        {
+            img_t_img[count] = (float)img_t.at<uchar>(m,n);
+            count++;
+        }    
+    }
+
+
+    // get final flow from patchmatch
+    // --- (Img &u1, Img &u2, int w, Img &off, Img &cost,int minoff, int maxoff,  int iterations, int randomtrials, bool use_horizontal_off) --- //
+    int patch_size = 13, minoff = 0, maxoff = 5, iterations = 10, randomtrials = 10;
+    cout << "(2) processing patch matching..." << endl; 
+    struct Img ocost_st(img_s.cols, img_s.rows);
+    patchmatch<distance_patch_NCC>(img_s_img, img_t_img, patch_size, odisp_st, ocost_st, minoff, maxoff, iterations, randomtrials, false);
+    cout << "halfway..." << endl;
+    struct Img ocost_ts(img_t.cols, img_t.rows);
+    patchmatch<distance_patch_NCC>(img_t_img, img_s_img, patch_size, odisp_ts, ocost_ts, minoff, maxoff, iterations, randomtrials, false);
+    cout << "completed!" << endl;
+
+
+    // --- demonstrate --- //
+    std::vector<cv::DMatch> TemperalMatches;
+    std::vector<cv::KeyPoint> PreKeys, CurKeys;
+    count = 0;
+
+    // find good correspondences (annotated version)
+    float e_r = 0, e_c = 0, e_rc = 0, e_rc_ini = 0, inl_num = 0;
+    cv::Mat corrs_kps_tmp; //  = SourceFrame.anno_kps.clone()
+    for (size_t n = 0; n < SourceFrame.anno_kps.rows; n=n+1)
+    {
+        if (SourceFrame.anno_kps.at<int>(n,1)!=TargetFrame.img_id)
+            continue;
         
-    // }
+        const int r = SourceFrame.anno_kps.at<int>(n,2);
+        const int c = SourceFrame.anno_kps.at<int>(n,3);
+        const int r_gt = SourceFrame.anno_kps.at<int>(n,4);
+        const int c_gt = SourceFrame.anno_kps.at<int>(n,5);
 
-    // // save flow image
-    // imwrite("test.tif", ini_flow_s);
+        const int r_offset = odisp_st(c,r,1);
+        const int c_offset = odisp_st(c,r,0);
+        const int r_offset_ini = odisp_st_ini(c,r,1);
+        const int c_offset_ini = odisp_st_ini(c,r,0);
+
+
+        if (r_offset==0 || c_offset==0)
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp.push_back(temp);            
+            continue;
+        }
+
+        if (odisp_ts(c+c_offset,r+r_offset,1)==0 || odisp_ts(c+c_offset,r+r_offset,0)==0)
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp.push_back(temp);            
+            continue;
+        }
+        
+        const int r_prime = r + r_offset + odisp_ts(c+c_offset,r+r_offset,1);
+        const int c_prime = c + c_offset + odisp_ts(c+c_offset,r+r_offset,0);
+
+        // cout << "cross check (r/r',c/c'): " << r << "/" << r_prime << " , " << c << "/" << c_prime << endl;
+
+        // save matches that satisfy cross check threshold
+        if (abs(r-r_prime)<THRES_crosscheck && abs(c-c_prime)<THRES_crosscheck)
+        {
+            int r_posi_in_t = r+r_offset;
+            int c_posi_in_t = c+c_offset;
+
+            int r_posi_in_t_dr = r+r_offset_ini;
+            int c_posi_in_t_dr = c+c_offset_ini;
+
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,r_posi_in_t,c_posi_in_t);
+            corrs_kps_tmp.push_back(temp); 
+
+            PreKeys.push_back(cv::KeyPoint(c,r,0,0,0,-1));
+            if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+                CurKeys.push_back(cv::KeyPoint(TargetFrame.norm_img.cols-c_posi_in_t-1,TargetFrame.norm_img.rows-r_posi_in_t-1,0,0,0,-1));
+            else
+                CurKeys.push_back(cv::KeyPoint(c+c_offset,r+r_offset,0,0,0,-1));
+            TemperalMatches.push_back(cv::DMatch(count,count,0));
+            count++;
+
+            if (METRIC_ERROR)
+            {
+                const float e_rc_tmp = (r_gt - (r+r_offset))*(r_gt - (r+r_offset)) + (c_gt - (c+c_offset))*(c_gt - (c+c_offset));
+                const float e_rc_tmp_ini = (r_gt - (r+r_offset_ini))*(r_gt - (r+r_offset_ini)) + (c_gt - (c+c_offset_ini))*(c_gt - (c+c_offset_ini));
+                cout << "error per point (r c sr): " << abs(r_gt - (r+r_offset_ini)) << "->" << abs(r_gt - (r+r_offset)) << " ";
+                cout << abs(c_gt - (c+c_offset_ini)) << "->" << abs(c_gt - (c+c_offset)) << " " << sqrt(e_rc_tmp_ini) << "->" << sqrt(e_rc_tmp) << endl;
+
+                if (sqrt(e_rc_tmp)<=1.2*sqrt(e_rc_tmp_ini) || (sqrt(e_rc_tmp)<6))
+                    inl_num = inl_num + 1.0;
+
+                e_r = e_r + abs(r_gt - (r+r_offset));
+                e_c = e_c + abs(c_gt - (c+c_offset));
+                e_rc = e_rc + e_rc_tmp;   
+                e_rc_ini = e_rc_ini + e_rc_tmp_ini; 
+            }
+              
+
+        }
+        else
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp.push_back(temp);              
+        }        
+
+    }
+
+    // SAVE RESULTS to IMG_S
+    SourceFrame.corres_kps.push_back(corrs_kps_tmp);
+
+    // metric matching error
+    if (METRIC_ERROR)
+    {
+        e_r = e_r/count;
+        e_c = e_c/count;
+        e_rc = sqrt(e_rc/count);
+        e_rc_ini = sqrt(e_rc_ini/count);
+        cout << "Metric Error between " << SourceFrame.img_id << " and " << TargetFrame.img_id << " (r c rc rc_ini %): ";
+        cout << e_r << " " << e_c << " " << e_rc << " " << e_rc_ini << " " << inl_num/count*100 << "%" << endl;
+    }
     
+    // plot matches
+    if (PLOT_IMG)
+    {
+        cout << "Good Matches Number: " << count << endl;
+        cv::Mat img_matches;
+        if (abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0)
+            cv::drawMatches(img_s, PreKeys, img_t_inv, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                            vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        else
+            cv::drawMatches(img_s, PreKeys, img_t, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                            vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);  
+        cv::namedWindow("temperal matches", cv::WINDOW_NORMAL);
+        cv::imshow("temperal matches", img_matches);
+        cv::waitKey(0);
+    }
 
+    PreKeys.clear();
+    CurKeys.clear();
+    TemperalMatches.clear();
+    count = 0;
+
+    // find good correspondences (annotated version)
+    cv::Mat corrs_kps_tmp2; //  = SourceFrame.anno_kps.clone()
+    for (size_t n = 0; n < TargetFrame.anno_kps.rows; n=n+1)
+    {
+        if (TargetFrame.anno_kps.at<int>(n,1)!=SourceFrame.img_id)
+            continue;
+        
+        const int r = TargetFrame.anno_kps.at<int>(n,2);
+        const int c = TargetFrame.anno_kps.at<int>(n,3);
+
+        const int r_offset = odisp_ts(c,r,1);
+        const int c_offset = odisp_ts(c,r,0);
+
+        if (r_offset==0 || c_offset==0)
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp2.push_back(temp);            
+            continue;
+        }
+        
+        if (odisp_st(c+c_offset,r+r_offset,1)==0 || odisp_st(c+c_offset,r+r_offset,0)==0)
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp2.push_back(temp);            
+            continue;
+        }
+        
+        const int r_prime = r + r_offset + odisp_st(c+c_offset,r+r_offset,1);
+        const int c_prime = c + c_offset + odisp_st(c+c_offset,r+r_offset,0);
+
+        // cout << "cross check (r/r',c/c'): " << r << "/" << r_prime << " , " << c << "/" << c_prime << endl;
+
+        // save matches that satisfy cross check threshold
+        if (abs(r-r_prime)<THRES_crosscheck && abs(c-c_prime)<THRES_crosscheck)
+        {
+            int r_posi_in_s = r+r_offset;
+            int c_posi_in_s = c+c_offset;
+            
+            if (false) // abs(SourceFrame.img_id-TargetFrame.img_id)%2!=0
+            {
+                r_posi_in_s = TargetFrame.norm_img.rows-r_posi_in_s-1;
+                c_posi_in_s = TargetFrame.norm_img.cols-c_posi_in_s-1;
+            }
+
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,r_posi_in_s,c_posi_in_s);
+            corrs_kps_tmp2.push_back(temp); 
+
+            PreKeys.push_back(cv::KeyPoint(c,r,0,0,0,-1));                
+            CurKeys.push_back(cv::KeyPoint(c+c_offset,r+r_offset,0,0,0,-1));
+            TemperalMatches.push_back(cv::DMatch(count,count,0));
+            count++;  
+
+        }
+        else
+        {
+            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            corrs_kps_tmp2.push_back(temp);              
+        }       
+
+    }
+
+    // SAVE RESULTS to IMG_T
+    TargetFrame.corres_kps.push_back(corrs_kps_tmp2);
+
+    // plot matches
+    if (PLOT_IMG)
+    {
+        cout << "Good Matches Number: " << count << endl;
+        cv::Mat img_matches;
+        cv::drawMatches(img_t, PreKeys, img_s, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                        vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        cv::namedWindow("temperal matches", cv::WINDOW_NORMAL);
+        cv::imshow("temperal matches", img_matches);
+        cv::waitKey(0);
+    }
+
+
+    return;
 }
 
 void FEAmatcher::RobustMatching(Frame &SourceFrame, Frame &TargetFrame)
 {
 
-    std::vector<std::pair<size_t, size_t> > CorresPairs;
+    // std::vector<std::pair<size_t, size_t> > CorresPairs;
 
     std::vector<cv::KeyPoint> kps_1 = SourceFrame.kps;
     std::vector<cv::KeyPoint> kps_2 = TargetFrame.kps;

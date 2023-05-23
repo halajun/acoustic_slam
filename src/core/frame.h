@@ -45,7 +45,7 @@ namespace Diasss
         std::vector<cv::Mat> geo_img; // image geo-referenced location in x, y and z
         std::vector<cv::KeyPoint> kps; // detected keypoints
         cv::Mat dst; // descriptors of detected keypoints
-        cv::Mat corres_kps; // correspondences of keypoints. row: frame_id, ref_frame_id, kp_x, kp_y, kp_ref_x, kp_ref_y
+        cv::Mat corres_kps, corres_kps_dense; // correspondences of keypoints. row: frame_id, ref_frame_id, kp_x, kp_y, kp_ref_x, kp_ref_y
         cv::Mat est_poses; // estimated poses
         
         

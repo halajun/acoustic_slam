@@ -130,3 +130,6 @@ test_data/ssh-174-img-old.xml
 annotated_kps.txt
 detected_kps.txt
 dr_kps.txt
+rc_fnl.txt
+rc_ini.txt
+.vscode/settings.json

@@ -12,17 +12,18 @@
 
 #include "frame.h"
 #include "util.h"
-//// a structure to wrap images 
-#include "img.h"
 
 namespace Diasss
 {
 
     class FEAmatcher
     {
+
     public:
 
         static void RobustMatching(Frame &SourceFrame, Frame &TargetFrame);
+        static void DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame); // S for sparse;
+        static void DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame); // D for dense;
 
         static std::vector<cv::Mat> IniFlow(Frame &SourceFrame, Frame &TargetFrame);
 

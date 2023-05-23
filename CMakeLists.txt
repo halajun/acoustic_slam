@@ -75,7 +75,7 @@ link_directories(
 
 
 
-#
+# Executable file
 add_executable (test_demo src/main.cc)
 target_link_libraries(test_demo patchmatch ${LIBS} ${OpenCV_LIBRARIES} ${Boost_LIBRARIES})
 
