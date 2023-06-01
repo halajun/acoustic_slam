@@ -42,7 +42,6 @@ Frame::Frame(const int &id, const cv::Mat &mImg, const cv::Mat &mPose, const std
     // tf_stb = {0.405, -3.119, -0.146};   // sensor offset (starboard) ENU
     // tf_port = {-0.405, -3.119, -0.146}; // sensor offset (port) ENU
 
-
     // --- get normalized image --- //
     norm_img = GetNormalizeSSS(mImg);
     // --- get filtered mask --- //

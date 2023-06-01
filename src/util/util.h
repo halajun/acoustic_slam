@@ -17,7 +17,9 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/BetweenFactor.h>
 
-// #include <pcl/visualization/cloud_viewer.h>
+#include "subframe.h"
+#include "frame.h"
+
 
 namespace Diasss
 {
@@ -28,18 +30,14 @@ namespace Diasss
 
         static void AddNoiseToPose(std::vector<cv::Mat> &AllPose);
 
+        static void FrameDividing(Frame &CurFrame, const int &sf_height, const int &KPS_TYPE);
+        static void SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int &MIN_MATCHES, const int &KPS_TYPE);
+
         static void LoadInputData(const std::string &strImageFolder, const std::string &strPoseFolder, const std::string &strAltitudeFolder, const std::string &strGroundRangeFolder, const std::string &strAnnotationFolder,
                          std::vector<cv::Mat> &vmImgs, std::vector<cv::Mat> &vmPoses, std::vector<std::vector<double>> &vvAltts, std::vector<std::vector<double>> &vvGranges, std::vector<cv::Mat> &vmAnnos);
 
-        static cv::Mat GetFilterMask(cv::Mat &sss_raw_img);                  
-
-        static cv::Mat NormalizeSSS(cv::Mat &sss_raw_img);
-        static cv::Mat NormalizeConvertSSS(Eigen::MatrixXd &sss_wf_img);
-
         static void ShowAnnos(int &f1, int &f2, cv::Mat &img1, cv::Mat &img2, const cv::Mat &anno1, const cv::Mat &anno2);
 
-        // static pcl::PointCloud<pcl::PointXYZI>::Ptr ImgMosaicOld(std::vector<cv::Mat> &coords, cv::Mat &img);
-        // static pcl::PointCloud<pcl::PointXYZI>::Ptr ImgMosaic(cv::Mat &img, cv::Mat &pose, std::vector<double> &g_range);
 
     };
 

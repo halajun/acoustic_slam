@@ -36,8 +36,11 @@ using namespace Diasss;
 
 int main(int argc, char** argv)
 {
-    std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder;
+    int SUBFRAME_SIZE = 200; // the height size of subframe to crop;
+    int KPS_TYPE = 0; // type of keypoint correspodences used: 0:ANNO, 1:SPARSE, 2:DENSE;
+    int MIN_MATCHES = 20; // minimum number of matches between subframes to save an edge;
 
+    std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder;
     // --- read input data paths --- //
     {
       cxxopts::Options options("data_parsing", "Reads input files...");
@@ -106,14 +109,30 @@ int main(int argc, char** argv)
         for (size_t j = i+1; j < test_frames.size(); j++)
         {
             cout << "perform dense matching between " << i << " and " << j << " ... " << endl;
-            FEAmatcher::DenseMatchingS(test_frames[i],test_frames[j]);
+            // FEAmatcher::DenseMatchingS(test_frames[i],test_frames[j]);
             // FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j]);
             cout << "matching completed!" << endl;
         }
     }
 
+    // --- divide a frame into multiple subframes--- //
+    for (size_t i = 0; i < test_frames.size(); i++)
+    {
+        Util::FrameDividing(test_frames[i], SUBFRAME_SIZE, KPS_TYPE);    
+    }
+
+    // --- associate between subframes across different frames --- //
+    for (size_t i = 0; i < test_frames.size(); i++)
+    {
+        for (size_t j = i+1; j < test_frames.size(); j++)
+        {
+            Util::SubFrameAssociating(test_frames[i], test_frames[j], MIN_MATCHES, KPS_TYPE); 
+        }
+           
+    }
+
     // --- optimize trajectory between images --- //
-    Optimizer::TrajOptimizationAllSubmap(test_frames);
+    // Optimizer::TrajOptimizationAllSubmap(test_frames);
 
 
     return 0;

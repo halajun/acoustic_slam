@@ -2,8 +2,6 @@
 #include "util.h"
 #include <random>
 
-typedef cv::Vec<float,2> Vec2f;
-
 namespace Diasss
 {
 
@@ -12,6 +10,153 @@ using namespace cv;
 using namespace gtsam;
 
 #define PI 3.14159265359
+
+bool SortPairInt(const pair<int,int> &a,
+              const pair<int,int> &b)
+{
+    return (a.second > b.second);
+}
+
+void Util::FrameDividing(Frame &CurFrame, const int &sf_height, const int &KPS_TYPE)
+{
+    float frame_w_half = CurFrame.norm_img.cols/2;
+
+    // main loop (step size is sf_height)
+    for (int i = sf_height; i < CurFrame.norm_img.rows; i=i+sf_height)
+    {
+        SubFrame sub_frame_tmp;
+
+        // the ID of current sub-frame in the image
+        sub_frame_tmp.subframe_id = (i-sf_height)/sf_height;
+
+        // ping range of current sub-frame
+        if (i+sf_height<=CurFrame.norm_img.rows)
+        {
+            sub_frame_tmp.end_ping = i;
+            sub_frame_tmp.start_ping = i-sf_height;
+            sub_frame_tmp.centre_ping = i-sf_height/2;
+        }
+        else
+        {
+            // in the case of getting to exceed the size of image,
+            // includes the rest pings in the last frame;
+            sub_frame_tmp.end_ping = CurFrame.norm_img.rows;
+            sub_frame_tmp.start_ping = i-sf_height;
+            sub_frame_tmp.centre_ping = (CurFrame.norm_img.rows+i-sf_height)/2;
+        }
+
+        cv::Mat kps_list;
+        if (KPS_TYPE==0)
+            kps_list = CurFrame.anno_kps.clone();
+        else if(KPS_TYPE==1)
+            kps_list = CurFrame.corres_kps.clone();
+        else if(KPS_TYPE==2)
+            kps_list = CurFrame.corres_kps_dense.clone();
+        
+        // loop on the keypoint list
+        for (size_t i = 0; i < kps_list.rows; i++)
+        {
+            if (kps_list.at<int>(i,2)<sub_frame_tmp.end_ping && kps_list.at<int>(i,2)>=sub_frame_tmp.start_ping)
+            {
+                sub_frame_tmp.corres_ids.push_back(i);
+            }           
+        }
+        
+        // cout << "number of matches: " << sub_frame_tmp.corres_ids.size() << " " << sub_frame_tmp.start_ping << " " << sub_frame_tmp.end_ping << endl;
+
+        CurFrame.subframes.push_back(sub_frame_tmp);
+
+
+
+
+    }
+    
+
+
+    return;
+}
+
+void Util::SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int &MIN_MATCHES, const int &KPS_TYPE)
+{
+
+    // get the list of keypoint correspodences in source frame
+    cv::Mat kps_list_s;
+    if (KPS_TYPE==0)
+        kps_list_s = SourceFrame.anno_kps.clone();
+    else if(KPS_TYPE==1)
+        kps_list_s = SourceFrame.corres_kps.clone();
+    else if(KPS_TYPE==2)
+        kps_list_s = SourceFrame.corres_kps_dense.clone();
+
+    // main loop
+    for (size_t i = 0; i < SourceFrame.subframes.size(); i++)
+    {
+        // record associated subframe ids
+        std::vector<int> asso_sf_ids(SourceFrame.subframes[i].corres_ids.size(),-1);
+
+        for (size_t j = 0; j < SourceFrame.subframes[i].corres_ids.size(); j++)
+        {
+            int cur_id = SourceFrame.subframes[i].corres_ids[j];
+
+            // only find corres in target frame and skip others
+            if (kps_list_s.at<int>(cur_id,1)!=TargetFrame.img_id)
+                continue;
+
+            int kp_row_t = kps_list_s.at<int>(cur_id,4);
+
+            // find which subframe in Targetframe, the current keypoint is corresponding to 
+            for (size_t k = 0; k < TargetFrame.subframes.size(); k++)
+            {
+                if (kp_row_t<TargetFrame.subframes[k].end_ping && kp_row_t>=TargetFrame.subframes[k].start_ping)
+                {
+                    asso_sf_ids[j] = TargetFrame.subframes[k].subframe_id;
+                    break;
+                }                
+            }
+                        
+        }
+
+        // --- count and sort --- //
+        // (1) count duplicates
+        std::map<int, int> dups;
+        for(int k : asso_sf_ids)
+            ++dups[k];
+        // (2) and sort them by descending order
+        std::vector<std::pair<int, int> > sorted;
+        for (auto k : dups)
+            sorted.push_back(std::make_pair(k.first,k.second));
+        std::sort(sorted.begin(), sorted.end(), SortPairInt);
+        // (3) save if it meets minimum matches requirement
+        for (size_t j = 0; j < sorted.size(); j++)
+        {
+            if (sorted[j].first!=-1 && sorted[j].second>MIN_MATCHES)
+            {
+                // --- save associated parent frame and subframe ids --- //
+                SourceFrame.subframes[i].asso_sf_ids.push_back(std::make_pair(TargetFrame.img_id,sorted[j].first));
+                // cout << "associated subframe: " << SourceFrame.img_id << "-" << SourceFrame.subframes[i].subframe_id << " <-> " << TargetFrame.img_id  << "-" <<  sorted[j].first << endl;
+                // --- save the associated subframe correspondences' ids --- //
+                std::vector<int> list_corres_ids;
+                for (size_t k = 0; k < asso_sf_ids.size(); k++)
+                {
+                    if (asso_sf_ids[k]==sorted[j].first)
+                        list_corres_ids.push_back(SourceFrame.subframes[i].corres_ids[k]);
+                    
+                }
+                SourceFrame.subframes[i].asso_sf_corres_ids.push_back(list_corres_ids);
+                
+            }
+            
+        }
+        
+
+        
+
+    }
+    
+
+
+    return;
+}
 
 void Util::AddNoiseToPose(std::vector<cv::Mat> &AllPose)
 {
@@ -306,286 +451,5 @@ void Util::ShowAnnos(int &f1, int &f2, cv::Mat &img1, cv::Mat &img2, const cv::M
     return;
 }
 
-cv::Mat Util::GetFilterMask(cv::Mat &sss_raw_img)
-{
-    float factor = 2.5;
-    int width = 2, side = 100;
-
-    cv::Mat output_mask = cv::Mat::ones(sss_raw_img.size(), CV_8U);
-
-    cv::Scalar MeanofMat = cv::mean(sss_raw_img);
-    // cout << "mean: " << MeanofMat[0] << endl;
-
-    for (int i = 0; i < output_mask.rows; i++)
-    {
-        for (int j = 0; j < output_mask.cols; j++)
-        {
-            // remove sensor buggy line
-            if (sss_raw_img.at<double>(i,j)>MeanofMat[0]*factor)
-                output_mask.at<bool>(i,j) = 0;
-            // remove centre line
-            if (j>output_mask.cols/2-width && j<output_mask.cols/2+width)
-                output_mask.at<bool>(i,j) = 0;
-            // remove the first and last turning pings
-            if (i<side || i>output_mask.rows-side)
-                output_mask.at<bool>(i,j) = 0;
-        }
-
-    }
-    
-    // cv::Mat out_demo;
-    // sss_raw_img.copyTo(out_demo,output_mask);
-    // cv::namedWindow("filtered mask", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("filtered mask", out_demo);
-    // cv::waitKey(0);
-    
-    return output_mask;
-}
-
-cv::Mat Util::NormalizeSSS(cv::Mat &sss_raw_img)
-{
-    double factor = 2.5, min_val, max_val, max_used;
-    cv::Mat output_img = cv::Mat::zeros(sss_raw_img.size(), CV_64FC1);
-
-    cv::Scalar MeanofMat = cv::mean(sss_raw_img);
-    max_used = MeanofMat[0]*factor;
-    cv::minMaxLoc(sss_raw_img, &min_val, &max_val);
-    // cout << "min max: " << min_val << " " << max_val << endl;
-
-    for (int i = 0; i < sss_raw_img.rows; i++)
-    {
-        for (int j = 0; j < sss_raw_img.cols; j++)
-        {
-            output_img.at<double>(i,j) = (sss_raw_img.at<double>(i,j)-min_val)/(max_used-min_val)*255.0;
-            if (output_img.at<double>(i,j)>255.0)
-                output_img.at<double>(i,j)=255.0;
-        }
-
-    }
-
-    output_img.convertTo(output_img, CV_8U);  
-    
-    return output_img;
-}
-
-cv::Mat Util::NormalizeConvertSSS(Eigen::MatrixXd &sss_wf_img)
-{
-    bool rs_by_column = 1, clip = 1;
-    cv::Mat output_img, intermediate_img;
-
-    std::cout << "image shape: " << sss_wf_img.cols() << " " << sss_wf_img.rows() << std::endl;
-
-    // normalize by column
-    for (int i = 0; i < sss_wf_img.cols(); i++)
-    {
-        // sss_wf_img.col(i).normalize();
-        sss_wf_img.col(i) = sss_wf_img.col(i)/sss_wf_img.col(i).mean();
-    }
-
-    // rescale to 0-255
-    Eigen::MatrixXd img_rescaled;
-    if (clip)
-    {
-        // if rescale
-        bool rs = 1;
-        // clip to range ~(l,u)
-        float l = 0, u = 3;
-        img_rescaled = Eigen::MatrixXd::Zero(sss_wf_img.rows(),sss_wf_img.cols());
-
-        for (size_t i = 0; i < sss_wf_img.rows(); i++)
-        {
-            for (size_t j = 0; j < sss_wf_img.cols(); j++)
-            {
-                if (sss_wf_img(i,j)<0)
-                    img_rescaled(i,j) = 0;
-                else if (sss_wf_img(i,j)>3)
-                    img_rescaled(i,j) = 3;  
-                else
-                    img_rescaled(i,j) = sss_wf_img(i,j);
-            }
-            
-        }
-        if (rs)
-        {
-            float l = 0, u = 255;
-            float min = img_rescaled.minCoeff();
-            float max = img_rescaled.maxCoeff();
-            img_rescaled = l + (img_rescaled.array() - min) * ((u - l) / (max - min));
-        }
-    }
-    else if (rs_by_column)
-    {
-        // by column
-        float l = 0, u = 255;
-
-        Eigen::ArrayXd  min = sss_wf_img.colwise().minCoeff();
-        Eigen::ArrayXd  max = sss_wf_img.colwise().maxCoeff();
-        img_rescaled = Eigen::MatrixXd::Zero(sss_wf_img.rows(),sss_wf_img.cols());
-
-        for (size_t i = 0; i < sss_wf_img.rows(); i++)
-        {
-            for (size_t j = 0; j < sss_wf_img.cols(); j++)
-            {
-                img_rescaled(i,j) = l + (sss_wf_img(i,j) - min(j)) * ((u - l) / (max(j) - min(j)));
-            }
-            
-        }
-    }
-    else
-    {
-        // by whole matrix
-        float l = 0, u = 255;
-        float min = sss_wf_img.minCoeff();
-        float max = sss_wf_img.maxCoeff();
-        img_rescaled = l + (sss_wf_img.array() - min) * ((u - l) / (max - min));
-    }
-        
-    // convert (8 bit uchar grey image, CV_8U)
-    cv::eigen2cv(img_rescaled, intermediate_img);
-    intermediate_img.convertTo(output_img, CV_8U); 
-
-    // return intermediate_img;
-    return output_img;
-}
-
-// pcl::PointCloud<pcl::PointXYZI>::Ptr Util::ImgMosaicOld(std::vector<cv::Mat> &coords, cv::Mat &img)
-// {
-    
-//     // --- process the intensity image --- //
-//     Eigen::MatrixXd img_norm, img_clip;
-//     cv::cv2eigen(img, img_norm);
-//     // normalize by column
-//     for (int i = 0; i < img_norm.cols(); i++)
-//         img_norm.col(i) = img_norm.col(i)/img_norm.col(i).mean();
-//     // clip to (l,u)
-//     float l = 0, u = 3;
-//     img_clip = Eigen::MatrixXd::Zero(img_norm.rows(),img_norm.cols());
-//     for (size_t i = 0; i < img_norm.rows(); i++)
-//     {
-//         for (size_t j = 0; j < img_norm.cols(); j++)
-//         {
-//             if (img_norm(i,j)<l)
-//                 img_clip(i,j) = l;
-//             else if (img_norm(i,j)>u)
-//                 img_clip(i,j) = u;  
-//             else
-//                 img_clip(i,j) = img_norm(i,j);
-//         }    
-//     }
-
-//     // --- fill cloud --- //
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>());
-//     int row = coords[0].rows, col = coords[0].cols;
-//     for (int i=0;i<row;i++)
-//     {
-//         for (int j=0;j<col;j++)
-//         {
-//             pcl::PointXYZI point;
-//             point.x = coords[0].at<double>(i,j);
-//             point.y = coords[1].at<double>(i,j);
-//             point.z = coords[2].at<double>(i,j);
-//             point.intensity = img_clip(i,j);
-
-//             cloud->points.push_back(point);
-//         }
-//     }   
-
-//     return cloud;
-// }
-
-// pcl::PointCloud<pcl::PointXYZI>::Ptr Util::ImgMosaic(cv::Mat &img, cv::Mat &pose, std::vector<double> &g_range)
-// {
-
-//     // (1) --- process the intensity image --- //
-
-//     Eigen::MatrixXd img_norm, img_clip;
-//     cv::cv2eigen(img, img_norm);
-//     // normalize by column
-//     for (int i = 0; i < img_norm.cols(); i++)
-//         img_norm.col(i) = img_norm.col(i)/img_norm.col(i).mean();
-//     // clip to (l,u)
-//     float l = 0, u = 3;
-//     img_clip = Eigen::MatrixXd::Zero(img_norm.rows(),img_norm.cols());
-//     for (size_t i = 0; i < img_norm.rows(); i++)
-//     {
-//         for (size_t j = 0; j < img_norm.cols(); j++)
-//         {
-//             if (img_norm(i,j)<l)
-//                 img_clip(i,j) = l;
-//             else if (img_norm(i,j)>u)
-//                 img_clip(i,j) = u;  
-//             else
-//                 img_clip(i,j) = img_norm(i,j);
-//         }    
-//     }
-//     // rescale to (rs_l,rs_u)
-//     float rs_l = 0, rs_u = 255;
-//     float min = img_clip.minCoeff();
-//     float max = img_clip.maxCoeff();
-//     img_clip = rs_l + (img_clip.array() - min) * ((rs_u - rs_l) / (max - min));
-
-
-//     // (2) --- get geo-referenced location of the image --- //
-
-//     // get bin locations of image
-//     cv::Mat bin_loc_x = cv::Mat::zeros(img.size(), CV_64FC1);
-//     cv::Mat bin_loc_y = cv::Mat::zeros(img.size(), CV_64FC1);
-//     cv::Mat bin_loc_z = cv::Mat::zeros(img.size(), CV_64FC1);
-
-//     for (int i = 0; i < img.rows; i++)
-//     {
-//         int count  = 0; // for indexing ground range
-
-//         // first, fill the starboard side
-//         for (int j = img.cols/2; j < img.cols; j++)
-//         {
-//             bin_loc_x.at<double>(i,j) = pose.at<double>(i,3) + g_range[count]*cos(pose.at<double>(i,2)+PI/2);
-//             bin_loc_y.at<double>(i,j) = pose.at<double>(i,4) + g_range[count]*sin(pose.at<double>(i,2)+PI/2);
-//             count++;
-//         }
-//         // then the port side
-//         for (int j = 0; j < img.cols/2; j++)
-//         {
-//             bin_loc_x.at<double>(i,j) = pose.at<double>(i,3) + g_range[count]*cos(pose.at<double>(i,2)-PI/2);
-//             bin_loc_y.at<double>(i,j) = pose.at<double>(i,4) + g_range[count]*sin(pose.at<double>(i,2)-PI/2);
-//             count--;
-//         }
-//     }
-
-//     // (3) --- fill cloud --- //
-//     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>());
-//     int row = bin_loc_x.rows, col = bin_loc_x.cols;
-//     for (int i=0;i<row;i++)
-//     {
-//         for (int j=0;j<col;j++)
-//         {
-//             pcl::PointXYZI point;
-
-//             point.x = bin_loc_x.at<double>(i,j);
-//             point.y = bin_loc_y.at<double>(i,j);
-//             point.z = bin_loc_z.at<double>(i,j);
-//             // point.z = img_clip(i,j);
-
-//             point.intensity = img_clip(i,j);
-
-//             cloud->points.push_back(point);
-//         }
-//     }
-
-//     // // draw 3d point cloud (old method)
-//     // viz::Viz3d window;
-//     // window.showWidget("points", viz::WCloud(mMosa_1, viz::Color::white()));
-//     // window.spin();
-
-//     // pcl::PointCloud<pcl::PointXYZI>::Ptr mosa = Util::ImgMosaicOld(vm3ds, vmImgs[0]);
-//     // pcl::visualization::CloudViewer viewer ("Side-scan Image Mosaicking Result");
-//     // viewer.showCloud (mosa);
-//     // viewer.addCoordinateSystem (1.0);
-//     // while (!viewer.wasStopped ())
-//     // {
-//     // }   
-
-//     return cloud;
-// }
 
 } // namespace Diasss
