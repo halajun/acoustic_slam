@@ -18,6 +18,243 @@ using namespace gtsam;
 
 #define PI 3.14159265359
 
+void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
+{
+    // weights for use
+    double wgt1_ = 0.001, wgt_2 = 10, wgt_3 = 0.5;
+    // add loopclosure or not, demonsrate or not;
+    bool ADD_LC = 1, SHOW_ID = 1;
+    // Noise model paras for pose
+    double ro1_ = wgt1_*PI/180, pi1_ = wgt1_*PI/180, ya1_ = 0.1*wgt1_*wgt_2*PI/180, x1_ = wgt1_*wgt_2, y1_ = wgt1_*wgt_2, z1_ = wgt1_;
+    // random noise generator
+    std::default_random_engine generator;
+    std::normal_distribution<double> distribution(0.0,1.0);
+    double noise_xyz = wgt_3, noise_rpy = wgt_3*PI/180;
+
+    // --- assign unique ID for each pose ---//  
+    int id_sum = 0;  
+    std::vector<std::vector<int>> UNIQUE_id;
+    for (size_t i = 0; i < AllFrames.size(); i++)
+    {
+        std::vector<int> id_tmp(AllFrames[i].dr_poses.rows);
+        for (size_t j = 0; j < AllFrames[i].dr_poses.rows; j++)
+        {
+            id_tmp[j] = id_sum;
+            id_sum = id_sum + 1;
+        }
+        UNIQUE_id.push_back(id_tmp);
+    }
+
+    // --- get all the loop closing indices --- //
+    std::vector<Vector5> All_LC_ids; // formated as: (unique_id_src, unique_id_tgt, src_img_id, src_sf_id, sf_asso_id)
+    for (size_t i = 0; i < AllFrames.size(); i++)
+    {
+        for (size_t j = 0; j < AllFrames[i].subframes.size(); j++)
+        {
+            for (size_t k = 0; k < AllFrames[i].subframes[j].asso_sf_ids.size(); k++)
+            {
+                int target_centre_ping_idx = AllFrames[AllFrames[i].subframes[j].asso_sf_ids[k].first].subframes[AllFrames[i].subframes[j].asso_sf_ids[k].second].centre_ping;
+                Vector5 LC_ids = (gtsam::Vector5() << UNIQUE_id[AllFrames[i].img_id][AllFrames[i].subframes[j].centre_ping], 
+                                                      UNIQUE_id[AllFrames[i].subframes[j].asso_sf_ids[k].first][target_centre_ping_idx],
+                                                      AllFrames[i].img_id, AllFrames[i].subframes[j].subframe_id,
+                                                      k).finished(); 
+                                                    //   AllFrames[i].subframes[j].asso_sf_ids[k].first,
+                                                    //   AllFrames[i].subframes[j].asso_sf_ids[k].second,
+                                                    //   AllFrames[i].subframes[j].asso_sf_corres_ids[k].size()).finished();
+
+                // cout << "LC ids: " << LC_ids(0) << " " << LC_ids(1) << " " << LC_ids(2) << " " << LC_ids(3) << " " << LC_ids(4) << endl;
+                All_LC_ids.push_back(LC_ids);
+            }
+            
+        }
+        
+    }
+
+    // --- get all the loop closing measurements --- //
+    std::vector< tuple<Pose3,Vector6,double> > All_LC_tfs;
+    for (size_t i = 0; i < All_LC_ids.size(); i++) // All_LC_ids.size()
+    {
+        int src_id = All_LC_ids[i](2), src_sf_id = All_LC_ids[i](3);
+        int tgt_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[i](4)].first;
+        int tgt_sf_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[i](4)].second;
+
+        if (SHOW_ID)
+        {
+            // cout << "***********************************************************************" << endl;
+            cout << "Compute LC-TF between frame " << src_id << "-" << src_sf_id << " & " << tgt_id << "-" << tgt_sf_id << " ";
+            cout << "("  << AllFrames[src_id].subframes[src_sf_id].asso_sf_corres_ids[All_LC_ids[i](4)].size() << " corres pairs in total)" << endl;
+        }
+    
+        tuple<Pose3,Vector6,double> lc_tf_Conv = Optimizer::LoopClosingSubMapTF(AllFrames[src_id],AllFrames[tgt_id],All_LC_ids[i]);
+        All_LC_tfs.push_back(lc_tf_Conv);
+
+    }
+    
+
+    return;
+}
+
+tuple<Pose3,Vector6,double>  Optimizer::LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids)
+{
+    bool PRINT_INFO = 0, MESH_DEPTH = 1;
+
+    // starboard and port offset    
+    std::vector<double> tf_stb = SourceFrame.tf_stb, tf_port = SourceFrame.tf_port;
+
+    // Create a Factor Graph and Values to hold the new data
+    NonlinearFactorGraph graph;
+    Values initialEstimate;
+
+    // Noise model parameters for keypoint
+    double sigma_r = 0.1, alpha_bw =0.1*PI/180;
+
+    SubFrame SF_src = SourceFrame.subframes[LC_ids(3)];
+
+    // To avoid large angle not able to handle using GTSAM
+    Pose3 cps_pose_s = gtsam::Pose3::identity(), cps_pose_t = gtsam::Pose3::identity();
+    int id_cp_s = SF_src.centre_ping, id_cp_t = TargetFrame.subframes[SF_src.asso_sf_ids[LC_ids(4)].second].centre_ping;
+    // cout  << "centre ping: " << id_cp_s << " " << id_cp_t << endl;
+    double yaw_s = SourceFrame.dr_poses.at<double>(id_cp_s,2), yaw_t = TargetFrame.dr_poses.at<double>(id_cp_t,2);
+    // cout << "yaw angle: " << yaw_s << " " << yaw_t << endl;
+    if (abs(yaw_s)>2*PI/3)
+        cps_pose_s = Pose3(Rot3::Rodrigues(0.0, 0.0, PI), Point3(0.0,0.0,0.0));
+    if (abs(yaw_t)>2*PI/3)
+        cps_pose_t = Pose3(Rot3::Rodrigues(0.0, 0.0, PI), Point3(0.0,0.0,0.0));
+
+    // centre ping pose
+    Pose3 c_pose_s = Pose3(Rot3::Rodrigues(SourceFrame.dr_poses.at<double>(id_cp_s,0), SourceFrame.dr_poses.at<double>(id_cp_s,1), SourceFrame.dr_poses.at<double>(id_cp_s,2)), 
+                        Point3(SourceFrame.dr_poses.at<double>(id_cp_s,3), SourceFrame.dr_poses.at<double>(id_cp_s,4), SourceFrame.dr_poses.at<double>(id_cp_s,5)))*cps_pose_s;
+    Pose3 c_pose_t = Pose3(Rot3::Rodrigues(TargetFrame.dr_poses.at<double>(id_cp_t,0), TargetFrame.dr_poses.at<double>(id_cp_t,1), TargetFrame.dr_poses.at<double>(id_cp_t,2)), 
+                        Point3(TargetFrame.dr_poses.at<double>(id_cp_t,3), TargetFrame.dr_poses.at<double>(id_cp_t,4), TargetFrame.dr_poses.at<double>(id_cp_t,5)))*cps_pose_t;
+    Pose3 Tp_st = c_pose_s.between(c_pose_t);
+
+    // fix at the source pose with DR prior
+    auto PosePriorModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3::Constant(0.000001), Vector3::Constant(0.000001))
+                                                            .finished());
+    graph.addPrior(Symbol('X', 1), c_pose_s, PosePriorModel);  
+
+    // add odometry factor to graph      
+    double ro_ = 0.1*PI/180, pi_ = 0.1*PI/180, ya_ = 0.5*PI/180, x_ = abs(Tp_st.x()*2), y_ = abs(Tp_st.y()/10), z_ = 0.1;
+    auto OdometryNoiseModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3(ro_, pi_, ya_), Vector3(x_, y_, z_))
+                                                    .finished());
+    graph.add(BetweenFactor<Pose3>(Symbol('X',1), Symbol('X',2), Tp_st, OdometryNoiseModel));
+    // cout << "Odo noise on x, y and yaw: " << x_ << " " << y_ << " " << ya_ << endl; 
+
+    // initialize pose
+    initialEstimate.insert(Symbol('X',1), c_pose_s);
+    initialEstimate.insert(Symbol('X',2), c_pose_t);
+
+    // --- loop for keypoint pairs --- //
+    for (size_t i = 0; i < SF_src.asso_sf_corres_ids[LC_ids(4)].size(); i=i+2)
+    {
+        int corres_id = SF_src.asso_sf_corres_ids[LC_ids(4)][i];
+        // cout << "corresponding ID: " << corres_id << endl;
+        cv::Mat corres;
+        if (SF_src.kps_type==0)
+        {
+            corres = SourceFrame.anno_kps.row(corres_id);
+        }
+        else if(SF_src.kps_type==1)
+        {
+            corres = SourceFrame.corres_kps.row(corres_id);
+        }
+        else if(SF_src.kps_type==2)
+        {
+            corres = SourceFrame.corres_kps_dense.row(corres_id);
+        }
+        // cout << "corres: " << corres.at<int>(2) << " " << corres.at<int>(3) << " " << corres.at<int>(4) << " " << corres.at<int>(5) << endl;
+
+        // get ping id
+        int id_s = corres.at<int>(2), id_t = corres.at<int>(4);
+        if (id_s>=SourceFrame.dr_poses.rows || id_t>=TargetFrame.dr_poses.rows)
+            cout << "row index out of range !!!" << endl;
+
+        // calculate slant ranges
+        int gra_id_s = corres.at<int>(3) - SourceFrame.ground_ranges.size();
+        double slant_range_s = sqrt(SourceFrame.altitudes[id_s]*SourceFrame.altitudes[id_s] + SourceFrame.ground_ranges[abs(gra_id_s)]*SourceFrame.ground_ranges[abs(gra_id_s)]);
+        int gra_id_t = corres.at<int>(5) - TargetFrame.ground_ranges.size();
+        double slant_range_t = sqrt(TargetFrame.altitudes[id_t]*TargetFrame.altitudes[id_t] + TargetFrame.ground_ranges[abs(gra_id_t)]*TargetFrame.ground_ranges[abs(gra_id_t)]);
+        // cout << "slant range: " << slant_range_s << " " << slant_range_t << endl;
+
+        // noise model
+        auto KP_NOISE_1 = noiseModel::Diagonal::Sigmas(Vector2(sigma_r,slant_range_s*alpha_bw));
+        auto KP_NOISE_2 = noiseModel::Diagonal::Sigmas(Vector2(sigma_r,slant_range_t*alpha_bw));
+
+        // sensor offset
+        Pose3 Ts_s;
+        if (corres.at<int>(3)<SourceFrame.geo_img[0].cols/2)
+        {
+            Ts_s = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_stb[0], tf_stb[1], tf_stb[2]));
+        }
+        else
+        {
+            Ts_s = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_port[0], tf_port[1], tf_port[2]));
+        }
+        Pose3 Ts_t;
+        if (corres.at<int>(5)<TargetFrame.geo_img[0].cols/2)
+        {
+            Ts_t = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_stb[0], tf_stb[1], tf_stb[2]));
+        }
+        else
+        {
+            Ts_t = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_port[0], tf_port[1], tf_port[2]));
+        }
+
+        // ping2centre offset
+        Pose3 p_pose_s = Pose3(Rot3::Rodrigues(SourceFrame.dr_poses.at<double>(id_s,0), SourceFrame.dr_poses.at<double>(id_s,1), SourceFrame.dr_poses.at<double>(id_s,2)), 
+                           Point3(SourceFrame.dr_poses.at<double>(id_s,3), SourceFrame.dr_poses.at<double>(id_s,4), SourceFrame.dr_poses.at<double>(id_s,5)))*cps_pose_s;
+        Pose3 T_cp_s = c_pose_s.inverse()*p_pose_s;       
+        Pose3 p_pose_t = Pose3(Rot3::Rodrigues(TargetFrame.dr_poses.at<double>(id_t,0), TargetFrame.dr_poses.at<double>(id_t,1), TargetFrame.dr_poses.at<double>(id_t,2)), 
+                           Point3(TargetFrame.dr_poses.at<double>(id_t,3), TargetFrame.dr_poses.at<double>(id_t,4), TargetFrame.dr_poses.at<double>(id_t,5)))*cps_pose_t;
+        Pose3 T_cp_t = c_pose_t.inverse()*p_pose_t; 
+
+        // add keypoint measurement factor to graph
+        graph.add(SssPointFactorSF(Symbol('L',i),Symbol('X',1),Vector2(slant_range_s,0.0),Ts_s,T_cp_s,KP_NOISE_1));
+        graph.add(SssPointFactorSF(Symbol('L',i),Symbol('X',2),Vector2(slant_range_t,0.0),Ts_t,T_cp_t,KP_NOISE_2));
+
+        // initialize point
+        int id_ss = corres.at<int>(3), id_tt = corres.at<int>(5);
+        if (id_ss>=SourceFrame.geo_img[0].cols || id_tt>=TargetFrame.geo_img[0].cols)
+            cout << "column index out of range !!!" << endl;  
+        double x_bar = (SourceFrame.geo_img[0].at<double>(id_s,id_ss)+TargetFrame.geo_img[0].at<double>(id_t,id_tt))/2;
+        double y_bar = (SourceFrame.geo_img[1].at<double>(id_s,id_ss)+TargetFrame.geo_img[1].at<double>(id_t,id_tt))/2;
+        double z_bar = ( (SourceFrame.dr_poses.at<double>(id_s,5)-SourceFrame.altitudes[id_s]) + (TargetFrame.dr_poses.at<double>(id_t,5)-TargetFrame.altitudes[id_t]) )/2;
+        if (SF_src.kps_type==0 && MESH_DEPTH)        
+            z_bar = double(corres.at<int>(5))/ 100000.0; 
+        initialEstimate.insert(Symbol('L',i), Point3(x_bar, y_bar, z_bar));                
+
+    }
+
+    // construct solver and optimize
+    gtsam::LevenbergMarquardtParams params; 
+    params.setVerbosityLM("SUMMARY");
+    gtsam::LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
+    Values result = optimizer.optimize();
+
+    Marginals marginals(graph, result, Marginals::QR);
+
+    // Show results before and after optimization
+    if (PRINT_INFO)
+    {
+        Pose3 new_pose = result.at<Pose3>(Symbol('X', 2))*cps_pose_t.inverse();
+        cout << "NEW POSE: " << endl << new_pose.translation() << endl;
+        cout << "OLD POSE: " << endl << c_pose_t.translation() << endl;
+    }
+
+    // get final output
+    tuple<Pose3,Vector6,double> output_tf  = std::make_tuple((result.at<Pose3>(Symbol('X',1))*cps_pose_s.inverse()).between(result.at<Pose3>(Symbol('X',2))*cps_pose_t.inverse()), 
+                                            marginals.marginalCovariance(Symbol('X',2)).diagonal(),
+                                            0);           
+    
+    // Clear the factor graph and values for the next iteration
+    graph.resize(0);
+    initialEstimate.clear();    
+    
+
+    return output_tf;
+
+}
+
 void Optimizer::TrajOptimizationAll(std::vector<Frame> &AllFrames)
 {
     // weights for use

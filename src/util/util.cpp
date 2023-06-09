@@ -47,11 +47,21 @@ void Util::FrameDividing(Frame &CurFrame, const int &sf_height, const int &KPS_T
 
         cv::Mat kps_list;
         if (KPS_TYPE==0)
+        {
             kps_list = CurFrame.anno_kps.clone();
+            sub_frame_tmp.kps_type = 0;
+        }
         else if(KPS_TYPE==1)
+        {
             kps_list = CurFrame.corres_kps.clone();
+            sub_frame_tmp.kps_type = 1;
+        }
         else if(KPS_TYPE==2)
+        {
             kps_list = CurFrame.corres_kps_dense.clone();
+            sub_frame_tmp.kps_type = 2;
+        }
+
         
         // loop on the keypoint list
         for (size_t i = 0; i < kps_list.rows; i++)
@@ -91,6 +101,12 @@ void Util::SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int
     // main loop
     for (size_t i = 0; i < SourceFrame.subframes.size(); i++)
     {
+
+        // --- for matching displaying --- //
+        std::vector<cv::KeyPoint> PreKeys, CurKeys;
+        std::vector<cv::DMatch> TemperalMatches;
+        int count = 0;
+
         // record associated subframe ids
         std::vector<int> asso_sf_ids(SourceFrame.subframes[i].corres_ids.size(),-1);
 
@@ -139,7 +155,15 @@ void Util::SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int
                 for (size_t k = 0; k < asso_sf_ids.size(); k++)
                 {
                     if (asso_sf_ids[k]==sorted[j].first)
+                    {
                         list_corres_ids.push_back(SourceFrame.subframes[i].corres_ids[k]);
+                        
+                        // for matching demonstration
+                        PreKeys.push_back(cv::KeyPoint(kps_list_s.at<int>(SourceFrame.subframes[i].corres_ids[k],3),kps_list_s.at<int>(SourceFrame.subframes[i].corres_ids[k],2),0,0,0,-1));
+                        CurKeys.push_back(cv::KeyPoint(kps_list_s.at<int>(SourceFrame.subframes[i].corres_ids[k],5),kps_list_s.at<int>(SourceFrame.subframes[i].corres_ids[k],4),0,0,0,-1));
+                        TemperalMatches.push_back(cv::DMatch(count,count,0));
+                        count = count + 1;
+                    }
                     
                 }
                 SourceFrame.subframes[i].asso_sf_corres_ids.push_back(list_corres_ids);
@@ -147,7 +171,18 @@ void Util::SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int
             }
             
         }
-        
+
+    if (0)
+    {
+        // --- demonstrate --- //
+        cv::Mat img_matches;
+        cv::drawMatches(SourceFrame.norm_img, PreKeys, TargetFrame.norm_img, CurKeys, TemperalMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1),
+                        vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+        cv::namedWindow("temperal matches", cv::WINDOW_NORMAL);
+        cv::imshow("temperal matches", img_matches);
+        cv::waitKey(0);
+    }
+               
 
         
 

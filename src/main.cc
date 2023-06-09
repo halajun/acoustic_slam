@@ -132,7 +132,7 @@ int main(int argc, char** argv)
     }
 
     // --- optimize trajectory between images --- //
-    // Optimizer::TrajOptimizationAllSubmap(test_frames);
+    Optimizer::TrajOptimizationSubMap(test_frames);
 
 
     return 0;

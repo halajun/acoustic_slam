@@ -50,6 +50,7 @@ set(patchmatch_SOURCE_FILES
   ${PROJECT_SOURCE_DIR}/src/core/optimizer.cpp
   ${PROJECT_SOURCE_DIR}/src/core/LMtriangulatefactor.cpp
   ${PROJECT_SOURCE_DIR}/src/core/SSSpointfactor.cpp
+  ${PROJECT_SOURCE_DIR}/src/core/SSSpointfactorSF.cpp
   ${PROJECT_SOURCE_DIR}/thirdparty/ORBextractor.cpp
   ${PROJECT_SOURCE_DIR}/thirdparty/img.cc
 )

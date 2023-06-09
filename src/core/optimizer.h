@@ -7,6 +7,7 @@
 
 #include "frame.h"
 #include "SSSpointfactor.h"
+#include "SSSpointfactorSF.h"
 #include "LMtriangulatefactor.h"
 
 #include <gtsam/base/Matrix.h>
@@ -41,6 +42,7 @@ using namespace gtsam;
         void static TrajOptimizationPair(Frame &SourceFrame, Frame &TargetFrame);
 
         void static TrajOptimizationAll(std::vector<Frame> &AllFrames);
+        void static TrajOptimizationSubMap(std::vector<Frame> &AllFrames);
 
         std::vector<Vector7> static GetKpsPairs(const bool &USE_ANNO, const cv::Mat &kps, const int &id_s, const int &id_t,
                                          const std::vector<double> &alts_s, const std::vector<double> &gras_s,
@@ -65,6 +67,8 @@ using namespace gtsam;
                                                         const std::vector<double> &alts_s, const std::vector<double> &alts_t,
                                                         const std::vector<double> &gras_s, const std::vector<double> &gras_t,
                                                         const cv::Mat &dr_poses_s, const cv::Mat &dr_poses_t);
+
+        tuple<Pose3,Vector6,double> static LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids);
 
         void static SaveTrajactoryPair(const Values &FinalEstimate, 
                                        const std::vector<int> &g_id_s, const std::vector<int> &g_id_t,

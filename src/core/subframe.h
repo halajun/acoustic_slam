@@ -16,6 +16,7 @@ namespace Diasss
         // Constructor 
         SubFrame(){};
         
+        int kps_type;
         int subframe_id;
         int start_ping, centre_ping, end_ping;
 
