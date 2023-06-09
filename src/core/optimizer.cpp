@@ -89,6 +89,153 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
         All_LC_tfs.push_back(lc_tf_Conv);
 
     }
+
+    // Create an iSAM2 object.
+    ISAM2Params parameters;
+    parameters.relinearizeThreshold = 0.01;
+    parameters.relinearizeSkip = 1;
+    parameters.factorization = ISAM2Params::QR;
+    parameters.print();
+    ISAM2 isam(parameters);
+
+    // Create a Factor Graph and Values to hold the new data
+    NonlinearFactorGraph graph;
+    Values initialEstimate;
+
+    // Main loop for all images
+    for (size_t i = 0; i < AllFrames.size(); i++)
+    {
+        for (size_t j = 0; j < AllFrames[i].dr_poses.rows; j++)
+        {
+            Pose3 pose_dr = Pose3(
+                Rot3::Rodrigues(AllFrames[i].dr_poses.at<double>(j,0),AllFrames[i].dr_poses.at<double>(j,1),AllFrames[i].dr_poses.at<double>(j,2)), 
+                Point3(AllFrames[i].dr_poses.at<double>(j,3), AllFrames[i].dr_poses.at<double>(j,4), AllFrames[i].dr_poses.at<double>(j,5)));
+
+            std::vector<double> seeds;
+            for (size_t k = 0; k < 6; k++)
+                seeds.push_back(distribution(generator));        
+            Pose3 add_noise(Rot3::Rodrigues(seeds[0]*noise_rpy, seeds[1]*noise_rpy, seeds[2]*noise_rpy),
+                            Point3(seeds[3]*noise_xyz, seeds[4]*noise_xyz, seeds[5]*noise_xyz));
+            
+            initialEstimate.insert(Symbol('X', UNIQUE_id[i][j]), pose_dr.compose(add_noise));
+            // initialEstimate.insert(Symbol('X', UNIQUE_id[i][j]), gtsam::Pose3::identity());
+
+            // if it's the first pose of the first image, add fixed prior factor
+            if (i==0 && j==0)
+            {
+                auto PriorModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3::Constant(0.000001), Vector3::Constant(0.000001))
+                                                            .finished());
+                graph.addPrior(Symbol('X', UNIQUE_id[i][j]), pose_dr, PriorModel);
+                continue;
+            }
+
+            // if it's the first pose BUT NOT the first image, get previous pose from last image
+            if (i!=0 && j==0)
+            {
+                int id = AllFrames[i-1].dr_poses.rows - 1;
+                Pose3 pose_dr_pre = Pose3(
+                    Rot3::Rodrigues(AllFrames[i-1].dr_poses.at<double>(id,0),AllFrames[i-1].dr_poses.at<double>(id,1),AllFrames[i-1].dr_poses.at<double>(id,2)), 
+                    Point3(AllFrames[i-1].dr_poses.at<double>(id,3), AllFrames[i-1].dr_poses.at<double>(id,4), AllFrames[i-1].dr_poses.at<double>(id,5)));
+
+                auto odo = pose_dr_pre.between(pose_dr);
+
+                auto OdoModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3(ro1_, pi1_, ya1_), Vector3(x1_, y1_, z1_))
+                                                                .finished());
+
+                graph.add(BetweenFactor<Pose3>(Symbol('X',UNIQUE_id[i-1][id]), Symbol('X',UNIQUE_id[i][j]), odo, OdoModel));
+            }
+            // otherwise, get previous pose from last ping
+            else
+            {
+                Pose3 pose_dr_pre = Pose3(
+                    Rot3::Rodrigues(AllFrames[i].dr_poses.at<double>(j-1,0),AllFrames[i].dr_poses.at<double>(j-1,1),AllFrames[i].dr_poses.at<double>(j-1,2)), 
+                    Point3(AllFrames[i].dr_poses.at<double>(j-1,3), AllFrames[i].dr_poses.at<double>(j-1,4), AllFrames[i].dr_poses.at<double>(j-1,5)));
+
+                auto odo = pose_dr_pre.between(pose_dr);
+
+                auto OdoModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3(ro1_, pi1_, ya1_), Vector3(x1_, y1_, z1_))
+                                                            .finished());
+
+                graph.add(BetweenFactor<Pose3>(Symbol('X',UNIQUE_id[i][j-1]), Symbol('X',UNIQUE_id[i][j]), odo, OdoModel));
+            }
+
+            // check loop closing constraint
+            if (i>0 && ADD_LC)
+            {
+                // find out which the image pair id，current ping may be in
+                vector<int> lc_candidate_ids;
+                for (size_t k = 0; k < All_LC_ids.size(); k++)
+                {
+                    int asso_frame_id = AllFrames[All_LC_ids[i](2)].subframes[All_LC_ids[i](3)].asso_sf_ids[All_LC_ids[i](4)].first;
+                    if (asso_frame_id==i)
+                        lc_candidate_ids.push_back(k);
+                    
+                }
+                
+                if (lc_candidate_ids.size() == 0)
+                    cout << "no matched lc candidate id found..." << endl;
+                else
+                {
+                    // check if current ping has loop closing measurement
+                    vector<int> lc_ids;
+                    for (size_t l = 0; l < lc_candidate_ids.size(); l++)
+                    {
+                        if (All_LC_ids[lc_candidate_ids[l]](1)==UNIQUE_id[i][j])
+                        {
+                            lc_ids.push_back(lc_candidate_ids[l]);
+                        }
+
+                    }
+                    
+                    // --- if loop closing measurement found, construct factor and add to graph --- //
+                    for (size_t l = 0; l < lc_ids.size(); l++)
+                    {
+                        if (get<2>(All_LC_tfs[lc_ids[l]])>0)
+                        {
+                            if (SHOW_ID)
+                            {
+                                int src_id = All_LC_ids[lc_ids[l]](2), src_sf_id = All_LC_ids[lc_ids[l]](3);
+                                int tgt_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[lc_ids[l]](4)].first;
+                                int tgt_sf_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[lc_ids[l]](4)].second;
+
+                                cout << "***********************************************************" << endl;
+                                cout << "Add New LC Constraint" << " ";
+                                cout << "between X" << All_LC_ids[lc_ids[l]](0) << " and X" << All_LC_ids[lc_ids[l]](1) << " ";
+                                cout << "(subframe " << src_id << "-" << src_sf_id << " & " << tgt_id << "-" << tgt_sf_id << ")" << endl;
+                            }
+
+                            // loop closure uncertainty model
+                            auto LoopClosureNoiseModel = gtsam::noiseModel::Diagonal::Variances(get<1>(All_LC_tfs[lc_ids[l]]));
+
+                            // add loop closure measurement
+                            Pose3 lc_tf = get<0>(All_LC_tfs[lc_ids[l]]);
+
+                            // add factor to graph
+                            graph.add(BetweenFactor<Pose3>(Symbol('X',All_LC_ids[lc_ids[l]](0)), Symbol('X',All_LC_ids[lc_ids[l]](1)), lc_tf, LoopClosureNoiseModel));
+
+                        }
+                    }
+                    
+                }
+            }
+            
+            
+            // Update iSAM with the new factors
+            isam.update(graph, initialEstimate);
+            // One more time
+            isam.update();
+            Values currentEstimate = isam.calculateEstimate();             
+
+            // Clear the factor graph and values for the next iteration
+            graph.resize(0);
+            initialEstimate.clear();
+
+        }
+        
+    }
+
+    // get latest estimated result
+    Values FinalEstimate = isam.calculateEstimate();
     
 
     return;
@@ -227,7 +374,7 @@ tuple<Pose3,Vector6,double>  Optimizer::LoopClosingSubMapTF(Frame &SourceFrame, 
 
     // construct solver and optimize
     gtsam::LevenbergMarquardtParams params; 
-    params.setVerbosityLM("SUMMARY");
+    // params.setVerbosityLM("SUMMARY");
     gtsam::LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
     Values result = optimizer.optimize();
 
@@ -244,7 +391,7 @@ tuple<Pose3,Vector6,double>  Optimizer::LoopClosingSubMapTF(Frame &SourceFrame, 
     // get final output
     tuple<Pose3,Vector6,double> output_tf  = std::make_tuple((result.at<Pose3>(Symbol('X',1))*cps_pose_s.inverse()).between(result.at<Pose3>(Symbol('X',2))*cps_pose_t.inverse()), 
                                             marginals.marginalCovariance(Symbol('X',2)).diagonal(),
-                                            0);           
+                                            1);           
     
     // Clear the factor graph and values for the next iteration
     graph.resize(0);
