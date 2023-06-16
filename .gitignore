@@ -133,3 +133,6 @@ dr_kps.txt
 rc_fnl.txt
 rc_ini.txt
 .vscode/settings.json
+build/.cmake/api/v1/query/client-integration-vscode/cache-v2
+build/.cmake/api/v1/query/client-integration-vscode/cmakeFiles-v1
+build/.cmake/api/v1/query/client-integration-vscode/codemodel-v2

@@ -60,6 +60,11 @@ using namespace gtsam;
                                              const Pose3 &Tp_s, const Pose3 &Tp_t,
                                              const Point3 &lm_ini);
 
+        Point3 static TriangulateOneLandmarkSF(const double sr_s, const double sr_t,
+                                            const Pose3 &Ts_s, const Pose3 &Ts_t,
+                                            const Pose3 &Tp_s, const Pose3 &Tp_t,
+                                            const Point3 &lm_ini);
+
         std::vector<tuple<Pose3,Vector6,double>> static LoopClosingTFs(const std::vector<Vector7> &kps_pairs, 
                                                         const std::vector<double> &tf_stb, const std::vector<double> &tf_port,
                                                         const int &img_id_s, const int &img_id_t,
@@ -68,7 +73,7 @@ using namespace gtsam;
                                                         const std::vector<double> &gras_s, const std::vector<double> &gras_t,
                                                         const cv::Mat &dr_poses_s, const cv::Mat &dr_poses_t);
 
-        tuple<Pose3,Vector6,double> static LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids);
+        tuple<Pose3,Vector6,double,double> static LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids);
 
         void static SaveTrajactoryPair(const Values &FinalEstimate, 
                                        const std::vector<int> &g_id_s, const std::vector<int> &g_id_t,
