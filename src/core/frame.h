@@ -19,7 +19,7 @@ namespace Diasss
 
         // Constructor 
         Frame(const int &id, const cv::Mat &mImg, const cv::Mat &mPose, const std::vector<double> &vAltt, 
-              const std::vector<double> &vGrange, const cv::Mat &mAnno);
+              const std::vector<double> &vGrange, const cv::Mat &mAnno, const cv::Mat &mPC);
 
         // // Destructor
         // ~Frame(){}
@@ -35,6 +35,7 @@ namespace Diasss
         int img_id;
         cv::Mat anno_kps;
         cv::Mat raw_img;
+        cv::Mat raw_pc; // raw point cloud from mebs
         cv::Mat dr_poses;
         std::vector<double> altitudes;
         std::vector<double> ground_ranges;

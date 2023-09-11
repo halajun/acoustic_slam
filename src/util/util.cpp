@@ -254,8 +254,10 @@ void Util::AddNoiseToPose(std::vector<cv::Mat> &AllPose)
 }
 
 
-void Util::LoadInputData(const std::string &strImageFolder, const std::string &strPoseFolder, const std::string &strAltitudeFolder, const std::string &strGroundRangeFolder, const std::string &strAnnotationFolder,
-                         std::vector<cv::Mat> &vmImgs, std::vector<cv::Mat> &vmPoses, std::vector<std::vector<double>> &vvAltts, std::vector<std::vector<double>> &vvGranges, std::vector<cv::Mat> &vmAnnos)
+void Util::LoadInputData(const std::string &strImageFolder, const std::string &strPoseFolder, const std::string &strAltitudeFolder, 
+                         const std::string &strGroundRangeFolder, const std::string &strAnnotationFolder, const std::string &strPointCloudFolder,
+                         std::vector<cv::Mat> &vmImgs, std::vector<cv::Mat> &vmPoses, std::vector<std::vector<double>> &vvAltts,
+                         std::vector<std::vector<double>> &vvGranges, std::vector<cv::Mat> &vmAnnos, std::vector<cv::Mat> &vmPCs)
 {
     // get data paths, ordered by name
     boost::filesystem::path path_img(strImageFolder);
@@ -292,6 +294,13 @@ void Util::LoadInputData(const std::string &strImageFolder, const std::string &s
           , boost::filesystem::directory_iterator{}
         );
     std::sort(path_annotation_ordered.begin(), path_annotation_ordered.end());
+
+    boost::filesystem::path path_pointcloud(strPointCloudFolder);
+    std::vector<boost::filesystem::path> path_pointcloud_ordered(
+          boost::filesystem::directory_iterator(path_pointcloud)
+          , boost::filesystem::directory_iterator{}
+        );
+    std::sort(path_pointcloud_ordered.begin(), path_pointcloud_ordered.end());
 
 
     // get input sss images
@@ -418,6 +427,31 @@ void Util::LoadInputData(const std::string &strImageFolder, const std::string &s
       //     }
       //     cout << endl;
       // }
+
+    }
+
+    // get input point cloud images
+    for(auto const& path : path_pointcloud_ordered)
+    {
+    //   std::cout << path << '\n';
+
+      cv::Mat pc_tmp;
+      cv::FileStorage fs(path.string(),cv::FileStorage::READ);
+      fs["reg_pc"] >> pc_tmp;
+      fs.release();
+      vmPCs.push_back(pc_tmp);
+      cout << "image size: "<< pc_tmp.rows << " " << pc_tmp.cols << endl;
+    //   cout.precision(10);
+    //   for (int i = 0; i < pc_tmp.rows; i++)
+    //   {
+    //       for (int j = 0; j < pc_tmp.cols; j++)
+    //       {
+    //         if (pc_tmp.at<Vec3d>(i,j)[0]!=0 && pc_tmp.at<Vec3d>(i,j)[1]!=0 && pc_tmp.at<Vec3d>(i,j)[2]!=0)
+    //         {
+    //             cout << pc_tmp.at<Vec3d>(i,j)[0] << " " << pc_tmp.at<Vec3d>(i,j)[1] << " " << pc_tmp.at<Vec3d>(i,j)[2] << endl;
+    //         }
+    //       }
+    //   }
 
     }
 

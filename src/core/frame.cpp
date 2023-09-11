@@ -16,7 +16,7 @@ using namespace cv;
 #define PI 3.14159265359
 
 Frame::Frame(const int &id, const cv::Mat &mImg, const cv::Mat &mPose, const std::vector<double> &vAltt, 
-             const std::vector<double> &vGrange, const cv::Mat &mAnno)
+             const std::vector<double> &vGrange, const cv::Mat &mAnno, const cv::Mat &mPC)
 {
 
     // --- initialize --- //
@@ -26,6 +26,7 @@ Frame::Frame(const int &id, const cv::Mat &mImg, const cv::Mat &mPose, const std
     ground_ranges = vGrange;
     img_id = id;
     anno_kps = mAnno;
+    raw_pc = mPC;
 
     
     // --- (0) original NED

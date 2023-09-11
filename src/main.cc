@@ -37,10 +37,10 @@ using namespace Diasss;
 int main(int argc, char** argv)
 {
     int SUBFRAME_SIZE = 200; // the height size of subframe to crop;
-    int KPS_TYPE = 0; // type of keypoint correspodences used: 0:ANNO, 1:SPARSE, 2:DENSE;
+    int KPS_TYPE = 2; // type of keypoint correspodences used: 0:ANNO, 1:SPARSE, 2:DENSE;
     int MIN_MATCHES = 20; // minimum number of matches between subframes to save an edge;
 
-    std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder;
+    std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder, strPointCloudFolder;
     // --- read input data paths --- //
     {
       cxxopts::Options options("data_parsing", "Reads input files...");
@@ -50,7 +50,8 @@ int main(int argc, char** argv)
           ("pose", "Input folder containing auv pose files", cxxopts::value(strPoseFolder))
           ("altitude", "Input folder containing auv altitude files", cxxopts::value(strAltitudeFolder))
           ("groundrange", "Input folder containing ground range files", cxxopts::value(strGroundRangeFolder))
-          ("annotation", "Input folder containing annotation files", cxxopts::value(strAnnotationFolder));
+          ("annotation", "Input folder containing annotation files", cxxopts::value(strAnnotationFolder))
+          ("pointcloud", "Input folder containing point cloud files", cxxopts::value(strPointCloudFolder));
 
       auto result = options.parse(argc, argv);
       if (result.count("help")) {
@@ -77,6 +78,10 @@ int main(int argc, char** argv)
         cout << "Please provide folder containing annotation files..." << endl;
         exit(0);
       }
+      if (result.count("pointcloud") == 0) {
+        cout << "Please provide folder containing point cloud files..." << endl;
+        exit(0);
+      }
     }
 
     // --- parse input data --- //
@@ -85,8 +90,9 @@ int main(int argc, char** argv)
     std::vector<std::vector<double>> vvAltts;
     std::vector<std::vector<double>> vvGranges;
     std::vector<cv::Mat> vmAnnos;
-    Util::LoadInputData(strImageFolder,strPoseFolder,strAltitudeFolder,strGroundRangeFolder,strAnnotationFolder,
-                        vmImgs,vmPoses,vvAltts,vvGranges,vmAnnos);
+    std::vector<cv::Mat> vmPCs;
+    Util::LoadInputData(strImageFolder,strPoseFolder,strAltitudeFolder,strGroundRangeFolder,strAnnotationFolder,strPointCloudFolder,
+                        vmImgs,vmPoses,vvAltts,vvGranges,vmAnnos,vmPCs);
 
     // Util::AddNoiseToPose(vmPoses);
     // cout << "add noise to pose... " << endl;
@@ -98,7 +104,7 @@ int main(int argc, char** argv)
     for (size_t i = 0; i < test_num; i++)
     {
         // cout << "constructing frame " << i << " ";
-        test_frames.push_back(Frame(i,vmImgs[i],vmPoses[i],vvAltts[i],vvGranges[i],vmAnnos[i]));
+        test_frames.push_back(Frame(i,vmImgs[i],vmPoses[i],vvAltts[i],vvGranges[i],vmAnnos[i],vmPCs[i]));
         // cout << "complete!" << endl;
 
     }
@@ -110,7 +116,9 @@ int main(int argc, char** argv)
         {
             cout << "perform dense matching between " << i << " and " << j << " ... " << endl;
             // FEAmatcher::DenseMatchingS(test_frames[i],test_frames[j]);
-            // FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j]);
+            FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j]);
+            // Util::ShowAnnos(test_frames[i].img_id,test_frames[j].img_id,test_frames[i].norm_img,test_frames[j].norm_img,
+            //     test_frames[i].anno_kps,test_frames[j].anno_kps);
             cout << "matching completed!" << endl;
         }
     }

@@ -31,7 +31,7 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
     std::normal_distribution<double> distribution(0.0,1.0);
     double noise_xyz = wgt_3, noise_rpy = wgt_3*PI/180;
     // loop closure thresholds
-    float plane_thres = 0.5, range_thres = 0.5;
+    float plane_thres = 0.5, range_thres = 0.3;
 
     // --- assign unique ID for each pose ---//  
     int id_sum = 0;  
@@ -55,9 +55,11 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
         {
             for (size_t k = 0; k < AllFrames[i].subframes[j].asso_sf_ids.size(); k++)
             {
-                int target_centre_ping_idx = AllFrames[AllFrames[i].subframes[j].asso_sf_ids[k].first].subframes[AllFrames[i].subframes[j].asso_sf_ids[k].second].centre_ping;
+                int tgt_frame_id = AllFrames[i].subframes[j].asso_sf_ids[k].first;
+                int tgt_subframe_id = AllFrames[i].subframes[j].asso_sf_ids[k].second;
+                int target_centre_ping_idx = AllFrames[tgt_frame_id].subframes[tgt_subframe_id].centre_ping;
                 Vector5 LC_ids = (gtsam::Vector5() << UNIQUE_id[AllFrames[i].img_id][AllFrames[i].subframes[j].centre_ping], 
-                                                      UNIQUE_id[AllFrames[i].subframes[j].asso_sf_ids[k].first][target_centre_ping_idx],
+                                                      UNIQUE_id[tgt_frame_id][target_centre_ping_idx],
                                                       AllFrames[i].img_id, AllFrames[i].subframes[j].subframe_id,
                                                       k).finished(); 
                                                     //   AllFrames[i].subframes[j].asso_sf_ids[k].first,
@@ -73,10 +75,11 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
     }
 
     // --- get all the loop closing measurements --- //
-    std::vector< tuple<Pose3,Vector6,double,double> > All_LC_tfs;
+    std::vector< tuple<Pose3,Vector6,double,double,double> > All_LC_tfs;
     for (size_t i = 0; i < All_LC_ids.size(); i++) // All_LC_ids.size()
     {
-        int src_id = All_LC_ids[i](2), src_sf_id = All_LC_ids[i](3);
+        int src_id = All_LC_ids[i](2);
+        int src_sf_id = All_LC_ids[i](3);
         int tgt_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[i](4)].first;
         int tgt_sf_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[i](4)].second;
 
@@ -87,10 +90,11 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
             cout << "("  << AllFrames[src_id].subframes[src_sf_id].asso_sf_corres_ids[All_LC_ids[i](4)].size() << " corres pairs in total)" << endl;
         }
     
-        tuple<Pose3,Vector6,double,double> lc_tf_Conv = Optimizer::LoopClosingSubMapTF(AllFrames[src_id],AllFrames[tgt_id],All_LC_ids[i]);
+        tuple<Pose3,Vector6,double,double,int> lc_tf_Conv = Optimizer::LoopClosingSubMapTF(AllFrames[src_id],AllFrames[tgt_id],All_LC_ids[i]);
         All_LC_tfs.push_back(lc_tf_Conv);
 
     }
+    cout << "Number of Loop-closing edges: " << All_LC_tfs.size() << endl;
 
     // Create an iSAM2 object.
     ISAM2Params parameters;
@@ -168,7 +172,7 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
                 vector<int> lc_candidate_ids;
                 for (size_t k = 0; k < All_LC_ids.size(); k++)
                 {
-                    int asso_frame_id = AllFrames[All_LC_ids[i](2)].subframes[All_LC_ids[i](3)].asso_sf_ids[All_LC_ids[i](4)].first;
+                    int asso_frame_id = AllFrames[All_LC_ids[k](2)].subframes[All_LC_ids[k](3)].asso_sf_ids[All_LC_ids[k](4)].first;
                     if (asso_frame_id==i)
                         lc_candidate_ids.push_back(k);
                     
@@ -192,12 +196,15 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
                     // --- if loop closing measurement found, construct factor and add to graph --- //
                     for (size_t l = 0; l < lc_ids.size(); l++)
                     {
+                        // cout << "Current plane and range error: " << get<2>(All_LC_tfs[lc_ids[l]]) << " " << get<3>(All_LC_tfs[lc_ids[l]]) << endl;
+
                         // criterio for adding loop
                         if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres)
                         {
                             if (SHOW_ID)
                             {
-                                int src_id = All_LC_ids[lc_ids[l]](2), src_sf_id = All_LC_ids[lc_ids[l]](3);
+                                int src_id = All_LC_ids[lc_ids[l]](2);
+                                int src_sf_id = All_LC_ids[lc_ids[l]](3);
                                 int tgt_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[lc_ids[l]](4)].first;
                                 int tgt_sf_id = AllFrames[src_id].subframes[src_sf_id].asso_sf_ids[All_LC_ids[lc_ids[l]](4)].second;
 
@@ -239,21 +246,27 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
 
     // get latest estimated result
     Values FinalEstimate = isam.calculateEstimate();
+
+    // --- Save trajectories (estimated, dead-reckoning, ...) --- //
+    std::vector<cv::Mat> dr_poses_all;
+    for (size_t i = 0; i < AllFrames.size(); i++)
+        dr_poses_all.push_back(AllFrames[i].dr_poses);    
+    Optimizer::SaveTrajactoryAll(FinalEstimate,UNIQUE_id,dr_poses_all);
     
 
     return;
 }
 
-tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids)
+tuple<Pose3,Vector6,double,double,int>  Optimizer::LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids)
 {
-    bool PRINT_INFO = 0, MESH_DEPTH = 0;
+    bool PRINT_INFO = 0, MESH_DEPTH = 0, MEBS_PC = 0, FOUND_PC = 0;
 
     // paras for RANSAC
     cv::RNG rng;
     cv::setRNGSeed(1);
-    int sample_num = 6, iter_num = 0, max_iter = 50, inlier_num = 0;
-    float plane_thres = 0.5, range_thres = 0.5, graph_e_cur = 0;
-    float plane_avg_e = 0, range_avg_e = 0, plane_avg_e_cur = 0, range_avg_e_cur = 0;
+    int sample_num = 6, iter_num = 0, max_iter = 50, inlier_num = 0, inlier_num_cur = 0;
+    float plane_thres = 0.7, range_thres = 0.3, graph_e_cur = 0;
+    float plane_avg_e = 0, range_avg_e = 0, plane_avg_e_cur = 0, range_avg_e_cur = 0, pr_avg_e = 0, pr_avg_e_cur = 0;
     std::vector<int> inlier_statistics(SourceFrame.subframes[LC_ids(3)].asso_sf_corres_ids[LC_ids(4)].size(),0);
 
     // starboard and port offset    
@@ -269,7 +282,7 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
 
     SubFrame SF_src = SourceFrame.subframes[LC_ids(3)];
 
-    // To avoid large angle not able to handle using GTSAM
+    // To avoid large angle not able to handle using GTSAM (compensate angle)
     Pose3 cps_pose_s = gtsam::Pose3::identity(), cps_pose_t = gtsam::Pose3::identity();
     int id_cp_s = SF_src.centre_ping, id_cp_t = TargetFrame.subframes[SF_src.asso_sf_ids[LC_ids(4)].second].centre_ping;
     // cout  << "centre ping: " << id_cp_s << " " << id_cp_t << endl;
@@ -338,7 +351,8 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
         }
 
         // --- loop for sampled keypoint pairs --- //
-        vector<float> plane_e(SF_src.asso_sf_corres_ids[LC_ids(4)].size(),0), range_e(SF_src.asso_sf_corres_ids[LC_ids(4)].size(),0);
+        vector<float> plane_e(SF_src.asso_sf_corres_ids[LC_ids(4)].size(),0);
+        vector<float> range_e(SF_src.asso_sf_corres_ids[LC_ids(4)].size(),0);
         for (size_t i = 0; i < sampled_ids.size(); i++)
         {
             int corres_id = SF_src.asso_sf_corres_ids[LC_ids(4)][sampled_ids[i]];
@@ -414,7 +428,62 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
             double y_bar = (SourceFrame.geo_img[1].at<double>(id_s,id_ss)+TargetFrame.geo_img[1].at<double>(id_t,id_tt))/2;
             double z_bar = ( (SourceFrame.dr_poses.at<double>(id_s,5)-SourceFrame.altitudes[id_s]) + (TargetFrame.dr_poses.at<double>(id_t,5)-TargetFrame.altitudes[id_t]) )/2;
             if (SF_src.kps_type==0 && MESH_DEPTH)        
-                z_bar = double(corres.at<int>(6))/ 100000.0; 
+                z_bar = double(corres.at<int>(6))/ 100000.0;
+            if (MEBS_PC)
+            {
+                if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[0], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[1], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[2]), 
+                                   PointPriorModel);  
+                    // double x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[0];
+                    // double y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[1];
+                    // double z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[2];
+                }
+                else if (TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[0]!=0 && TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[1]!=0 && TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[0], TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[1], TargetFrame.raw_pc.at<Vec3d>(id_t,id_tt)[2]), 
+                                   PointPriorModel);                     
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[0], SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[1], SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[2]), 
+                                   PointPriorModel);  
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[0], SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[1], SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[2]), 
+                                   PointPriorModel);  
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[0], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[1], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[2]), 
+                                   PointPriorModel);  
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[2]!=0)
+                {
+                    auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0))
+                                                                            .finished());
+                    graph.addPrior(Symbol('L', i), 
+                                   Point3(SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[0], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[1], SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[2]), 
+                                   PointPriorModel);  
+                }
+            }
+             
             initialEstimate.insert(Symbol('L',i), Point3(x_bar, y_bar, z_bar));                
 
         }
@@ -429,6 +498,7 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
         Marginals marginals(graph, result, Marginals::QR);
 
         // --- loop for inliers checking --- //
+        cout << "No. " << iter_num << " iteration: " <<  "inlier checking ..." << endl;
         for (size_t i = 0; i < sampled_labels.size(); i++)
         {
             // exclude the sampled IDs
@@ -509,21 +579,62 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
             double z_bar = ( (SourceFrame.dr_poses.at<double>(id_s,5)-SourceFrame.altitudes[id_s]) + (TargetFrame.dr_poses.at<double>(id_t,5)-TargetFrame.altitudes[id_t]) )/2;
             if (SF_src.kps_type==0 && MESH_DEPTH)        
                 z_bar = double(corres.at<int>(6))/ 100000.0;
+            if (MEBS_PC)
+            {
+                if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[2]!=0)
+                {
+                    x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[0];
+                    y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[1];
+                    z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss)[2];
+                    FOUND_PC = true;
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[2]!=0)
+                {
+                    x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[0];
+                    y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[1];
+                    z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s-1,id_ss)[2];
+                    FOUND_PC = true;
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[2]!=0)
+                {
+                    x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[0];
+                    y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[1];
+                    z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s+1,id_ss)[2];
+                    FOUND_PC = true;
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[2]!=0)
+                {
+                    x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[0];
+                    y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[1];
+                    z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss+1)[2];
+                    FOUND_PC = true; 
+                }
+                else if (SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[0]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[1]!=0 && SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[2]!=0)
+                {
+                    x_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[0];
+                    y_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[1];
+                    z_bar = SourceFrame.raw_pc.at<Vec3d>(id_s,id_ss-1)[2];
+                    FOUND_PC = true;
+                }
+            }
 
             // triangulate landmark from estimated poses
-            Point3 lm_tri =  Optimizer::TriangulateOneLandmarkSF(slant_range_s,slant_range_t,Ts_s,Ts_t,p_pose_s_new,p_pose_t_new,Point3(x_bar, y_bar, z_bar));     
+            Point3 lm_tri =  Optimizer::TriangulateOneLandmarkSF(slant_range_s,slant_range_t,Ts_s,Ts_t,p_pose_s_new,p_pose_t_new,Point3(x_bar, y_bar, z_bar),FOUND_PC);     
             
             Point3 lm_tri_s = Ts_s.transformTo( p_pose_s_new.transformTo(lm_tri) );
             Point3 lm_tri_t = Ts_t.transformTo( p_pose_t_new.transformTo(lm_tri) );
 
-            // calculate average plane and range error
-            plane_avg_e = plane_avg_e + (abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2;
-            range_avg_e = range_avg_e + (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2;
-
-            if ((abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2< plane_thres&& (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2 < range_thres)
+            // check if it is an inlier
+            if ((abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2< plane_thres && (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2 < range_thres)
             {
                 inlier_num++;
                 inlier_statistics[i] = inlier_statistics[i] + 1;
+
+                // calculate average plane and range error
+                plane_avg_e = plane_avg_e + (abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2;
+                range_avg_e = range_avg_e + (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2;
+                pr_avg_e = pr_avg_e + (sqrt(lm_tri_s.x()*lm_tri_s.x() + (gtsam::norm3(lm_tri_s)-slant_range_s)*(gtsam::norm3(lm_tri_s)-slant_range_s)) 
+                                    + sqrt(lm_tri_t.x()*lm_tri_t.x() + (gtsam::norm3(lm_tri_t)-slant_range_t)*(gtsam::norm3(lm_tri_t)-slant_range_t)))/2;
 
                 if (PRINT_INFO && true)
                 {
@@ -534,9 +645,8 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
                     cout << (abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2  << ")" << endl;
                 }  
             }         
-
-
         }
+        // cout << "checking done !!!" << endl;
 
         if (PRINT_INFO)
         {
@@ -549,29 +659,44 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
             cout << endl; 
         }
         
-        plane_avg_e = plane_avg_e/(sampled_labels.size()-sampled_ids.size());
-        range_avg_e = range_avg_e/(sampled_labels.size()-sampled_ids.size());
+        if (inlier_num==0)
+        {
+            plane_avg_e = 1000;
+            range_avg_e = 1000;
+            pr_avg_e = 1000;
+        }
+        else
+        {
+            plane_avg_e = plane_avg_e/inlier_num; // /(sampled_labels.size()-sampled_ids.size());
+            range_avg_e = range_avg_e/inlier_num; // /(sampled_labels.size()-sampled_ids.size());
+            pr_avg_e = pr_avg_e/inlier_num; // /(sampled_labels.size()-sampled_ids.size());
+        }
+    
         if (PRINT_INFO)
-            cout << "AVG P & R error/Inlier/GraphE#: " << plane_avg_e << " " << range_avg_e << " " << inlier_num << " " << graph.error(result) << endl;
+            cout << "AVG P & R & PR error/Inlier/GraphE#: " << plane_avg_e << " " << range_avg_e << " " << pr_avg_e << " " << inlier_num << " " << graph.error(result) << endl;
 
 
         // save optimal result based on certain criteria
-        if (iter_num == 1 || graph.error(result) < graph_e_cur)
-        // if (iter_num == 1 || (plane_avg_e<plane_avg_e_cur && range_avg_e<range_avg_e_cur))
+        // if (iter_num == 1 || pr_avg_e < pr_avg_e_cur)
+        // if (iter_num == 1 || graph.error(result) < graph_e_cur)
+        if (iter_num == 1 || (inlier_num_cur<inlier_num && plane_avg_e<plane_avg_e_cur && range_avg_e<range_avg_e_cur))
         {
             plane_avg_e_cur = plane_avg_e;
             range_avg_e_cur = range_avg_e;
             graph_e_cur = graph.error(result);
+            pr_avg_e_cur = pr_avg_e;
+            inlier_num_cur = inlier_num;
 
             finalEstimate = result;
             finalMarginals = marginals;
 
-            // cout << "AVG P & R error/Inlier/GraphE#: " << plane_avg_e << " " << range_avg_e << " " << inlier_num << " " << graph.error(result) << endl;
+            cout << "AVG P & R/Inlier/GraphE#: " << plane_avg_e << " " << range_avg_e << " " << inlier_num << " " << graph.error(result) << endl;
         }
 
         // clean iterating values
         plane_avg_e = 0;
         range_avg_e = 0;
+        pr_avg_e = 0;
         inlier_num = 0;       
 
         // Clear the factor graph and values for the next iteration
@@ -590,8 +715,6 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
         cout << endl;
     }
     
-    
-
 
     // Show results before and after optimization
     if (PRINT_INFO)
@@ -602,9 +725,9 @@ tuple<Pose3,Vector6,double,double>  Optimizer::LoopClosingSubMapTF(Frame &Source
     }
 
     // get final output
-    tuple<Pose3,Vector6,double,double> output_tf  = std::make_tuple((finalEstimate.at<Pose3>(Symbol('X',1))*cps_pose_s.inverse()).between(finalEstimate.at<Pose3>(Symbol('X',2))*cps_pose_t.inverse()), 
+    tuple<Pose3,Vector6,double,double,int> output_tf  = std::make_tuple((finalEstimate.at<Pose3>(Symbol('X',1))*cps_pose_s.inverse()).between(finalEstimate.at<Pose3>(Symbol('X',2))*cps_pose_t.inverse()), 
                                             finalMarginals.marginalCovariance(Symbol('X',2)).diagonal(),
-                                            plane_avg_e, range_avg_e);            
+                                            plane_avg_e_cur, range_avg_e_cur, inlier_num_cur);            
     
 
     return output_tf;
@@ -1616,7 +1739,8 @@ Point3 Optimizer::TriangulateOneLandmark(const Vector7 &kps_pair,
 Point3 Optimizer::TriangulateOneLandmarkSF(const double sr_s, const double sr_t,
                                          const Pose3 &Ts_s, const Pose3 &Ts_t,
                                          const Pose3 &Tp_s, const Pose3 &Tp_t,
-                                         const Point3 &lm_ini)
+                                         const Point3 &lm_ini,
+                                         const bool &usePC)
 {
 
     // Create a Factor Graph and Values to hold the new data
@@ -1637,6 +1761,9 @@ Point3 Optimizer::TriangulateOneLandmarkSF(const double sr_s, const double sr_t,
     double depth_uncertainty = sqrt( (Tp_s.x()-Tp_t.x())*(Tp_s.x()-Tp_t.x()) + (Tp_s.y()-Tp_t.y())*(Tp_s.y()-Tp_t.y()) )/100;
     auto PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(10.0, 10.0, depth_uncertainty))
                                                             .finished());
+    if (usePC)
+        PointPriorModel = noiseModel::Diagonal::Sigmas((Vector(3) << Vector3(1.0, 1.0, 1.0)).finished());
+    
     graph.addPrior(1, lm_ini, PointPriorModel);  
 
     initialEstimate.insert(1, lm_ini);

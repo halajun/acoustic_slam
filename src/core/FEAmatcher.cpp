@@ -116,7 +116,7 @@ std::vector<cv::Mat> FEAmatcher::IniFlow(Frame &SourceFrame, Frame &TargetFrame)
 
 void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
 {
-    bool PLOT_IMG = true;
+    bool PLOT_IMG = 0;
     int count = 0, THRES_crosscheck = 3;
 
     // get normalized image;
@@ -219,7 +219,7 @@ void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
             if (y==y_prime && x==x_prime)
             {
 
-                cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,y,x,y_posi_in_t,x_posi_in_t);
+                cv::Mat1i temp = (cv::Mat1i(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,y,x,y_posi_in_t,x_posi_in_t);
                 corrs_kps_tmp.push_back(temp); 
 
                 PreKeys.push_back(cv::KeyPoint(x,y,0,0,0,-1));
@@ -259,7 +259,7 @@ void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
 
 void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
 {
-    bool PLOT_IMG = true, METRIC_ERROR = true;
+    bool PLOT_IMG = 1, METRIC_ERROR = false;
     int count = 0, THRES_crosscheck = 3;
 
     // get normalized image;
@@ -359,14 +359,14 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
 
         if (r_offset==0 || c_offset==0)
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp.push_back(temp);            
             continue;
         }
 
         if (odisp_ts(c+c_offset,r+r_offset,1)==0 || odisp_ts(c+c_offset,r+r_offset,0)==0)
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp.push_back(temp);            
             continue;
         }
@@ -385,7 +385,8 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
             int r_posi_in_t_dr = r+r_offset_ini;
             int c_posi_in_t_dr = c+c_offset_ini;
 
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,r_posi_in_t,c_posi_in_t);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,r_posi_in_t,c_posi_in_t);
+            // cout << "check saved keypoints: " << temp.at<int>(0) << " " << temp.at<int>(1) << " " << temp.at<int>(2) << " " << temp.at<int>(3) << " " << temp.at<int>(4) << endl;
             corrs_kps_tmp.push_back(temp); 
 
             PreKeys.push_back(cv::KeyPoint(c,r,0,0,0,-1));
@@ -416,7 +417,7 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
         }
         else
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  SourceFrame.img_id,TargetFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp.push_back(temp);              
         }        
 
@@ -472,14 +473,14 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
 
         if (r_offset==0 || c_offset==0)
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp2.push_back(temp);            
             continue;
         }
         
         if (odisp_st(c+c_offset,r+r_offset,1)==0 || odisp_st(c+c_offset,r+r_offset,0)==0)
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp2.push_back(temp);            
             continue;
         }
@@ -501,7 +502,7 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
                 c_posi_in_s = TargetFrame.norm_img.cols-c_posi_in_s-1;
             }
 
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,r_posi_in_s,c_posi_in_s);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,r_posi_in_s,c_posi_in_s);
             corrs_kps_tmp2.push_back(temp); 
 
             PreKeys.push_back(cv::KeyPoint(c,r,0,0,0,-1));                
@@ -512,7 +513,7 @@ void FEAmatcher::DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame)
         }
         else
         {
-            cv::Mat1d temp = (cv::Mat1d(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
+            cv::Mat1i temp = (cv::Mat1i(1,6)<<  TargetFrame.img_id,SourceFrame.img_id,r,c,-1,-1);
             corrs_kps_tmp2.push_back(temp);              
         }       
 

@@ -136,3 +136,16 @@ rc_ini.txt
 build/.cmake/api/v1/query/client-integration-vscode/cache-v2
 build/.cmake/api/v1/query/client-integration-vscode/cmakeFiles-v1
 build/.cmake/api/v1/query/client-integration-vscode/codemodel-v2
+test_data/annos-xml-latest/SSH-0170.xml
+test_data/annos-xml-latest/SSH-0171.xml
+test_data/annos-xml-latest/SSH-0172.xml
+test_data/annos-xml-latest/SSH-0173.xml
+test_data/annos-xml-latest/SSH-0174.xml
+test_data/img-xml-latest/ssh-170-img.xml
+test_data/img-xml-latest/ssh-171-img.xml
+test_data/img-xml-latest/ssh-172-img.xml
+test_data/img-xml-latest/ssh-173-img.xml
+test_data/img-xml-latest/ssh-174-img.xml
+*.xml
+dr_poses_all.txt
+est_poses_all.txt
