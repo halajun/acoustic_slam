@@ -235,8 +235,9 @@ void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
         }
     }
 
-    // SAVE RESULTS to IMG_S
+    // --- SAVE RESULTS to IMG_S --- //
     SourceFrame.corres_kps_dense.push_back(corrs_kps_tmp);
+    // SourceFrame.corres_kps_dense = corrs_kps_tmp; // corrs_kps_tmp.clone();
 
     // plot matches
     if (PLOT_IMG)

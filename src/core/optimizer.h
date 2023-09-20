@@ -74,7 +74,7 @@ using namespace gtsam;
                                                         const std::vector<double> &gras_s, const std::vector<double> &gras_t,
                                                         const cv::Mat &dr_poses_s, const cv::Mat &dr_poses_t);
 
-        tuple<Pose3,Vector6,double,double,int> static LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids);
+        tuple<Pose3,Vector6,double,double,double> static LoopClosingSubMapTF(Frame &SourceFrame, Frame &TargetFrame, const Vector5 &LC_ids);
 
         void static SaveTrajactoryPair(const Values &FinalEstimate, 
                                        const std::vector<int> &g_id_s, const std::vector<int> &g_id_t,

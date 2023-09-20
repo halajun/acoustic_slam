@@ -84,7 +84,7 @@ cv::Mat Frame::GetNormalizeSSS(const cv::Mat &sss_raw_img)
 cv::Mat Frame::GetFilteredMask(const cv::Mat &sss_raw_img)
 {
     double factor = 2.5;
-    int width = 10, r = 6, side = 150;
+    int width = 10, r = 6, side = 200;
 
     cv::Mat output_mask(sss_raw_img.size(), CV_8UC1, Scalar(255));
 
@@ -117,7 +117,7 @@ cv::Mat Frame::GetFilteredMask(const cv::Mat &sss_raw_img)
             if (i<side || i>(output_mask.rows-side))
                 output_mask.at<bool>(i,j) = 0;
             // remove the left and right side columns
-            if (j<side*0.6 || j>(output_mask.cols-side*0.6))
+            if (j<side*0.5 || j>(output_mask.cols-side*0.5))
                 output_mask.at<bool>(i,j) = 0;
         }
 
