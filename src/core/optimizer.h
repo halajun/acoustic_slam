@@ -44,6 +44,8 @@ using namespace gtsam;
         void static TrajOptimizationAll(std::vector<Frame> &AllFrames);
         void static TrajOptimizationSubMap(std::vector<Frame> &AllFrames);
 
+        void static SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string &SavePath);
+
         std::vector<Vector7> static GetKpsPairs(const bool &USE_ANNO, const cv::Mat &kps, const int &id_s, const int &id_t,
                                          const std::vector<double> &alts_s, const std::vector<double> &gras_s,
                                          const std::vector<double> &alts_t, const std::vector<double> &gras_t);

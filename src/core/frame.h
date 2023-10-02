@@ -36,7 +36,7 @@ namespace Diasss
         cv::Mat anno_kps;
         cv::Mat raw_img;
         cv::Mat raw_pc; // raw point cloud from mebs
-        cv::Mat dr_poses;
+        cv::Mat dr_poses, ini_poses;
         std::vector<double> altitudes;
         std::vector<double> ground_ranges;
         std::vector<double> tf_stb;

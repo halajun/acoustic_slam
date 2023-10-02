@@ -22,6 +22,7 @@ Frame::Frame(const int &id, const cv::Mat &mImg, const cv::Mat &mPose, const std
     // --- initialize --- //
     raw_img = mImg;
     dr_poses = mPose;
+    ini_poses = mPose;
     altitudes = vAltt;
     ground_ranges = vGrange;
     img_id = id;

@@ -275,6 +275,8 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
 
         }
 
+        // // also save it to est_poses
+        // AllFrames[i].est_poses = AllFrames[i].dr_poses;
 
     }
      
@@ -2056,6 +2058,115 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
     }
      
     save_result_2.close();
+
+    return;
+}
+
+void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string &SavePath)
+{
+
+    ofstream save_result;
+    save_result.open(SavePath.c_str(),ios::trunc);
+
+    // Noise model parameters for keypoint
+    double sigma_r = 0.1, alpha_bw =0.1*PI/180;
+
+    // compensate pose
+    Pose3 cps_pose_s = gtsam::Pose3::identity(), cps_pose_t = gtsam::Pose3::identity();
+
+    // thresholds
+    float plane_thres = 0.2, range_thres = 0.1;
+
+    // starboard and port offset    
+    std::vector<double> tf_stb = AllFrames[0].tf_stb, tf_port = AllFrames[0].tf_port;
+
+    // main loop
+    for (size_t i = 0; i < AllFrames.size(); i++)
+    {
+        for (size_t j = i+1; j < AllFrames.size(); j++)
+        {
+            for (size_t k = 0; k < AllFrames[i].corres_kps_dense.rows; k++)
+            {
+                // only find corres in target frame and skip others
+                if (AllFrames[i].corres_kps_dense.at<int>(k,1)!=AllFrames[j].img_id)
+                    continue;
+
+                cv::Mat corres = AllFrames[i].corres_kps_dense.row(k);
+
+                // get ping id
+                int id_s = corres.at<int>(2), id_t = corres.at<int>(4);
+                if (id_s>=AllFrames[i].dr_poses.rows || id_t>=AllFrames[j].dr_poses.rows)
+                    cout << "row index out of range !!!" << endl;
+
+                // stupid but important to avoid unconvergence case
+                double yaw_s = AllFrames[i].dr_poses.at<double>(id_s,2), yaw_t = AllFrames[j].dr_poses.at<double>(id_t,2);
+                if (abs(yaw_s)>2*PI/3)
+                    cps_pose_s = Pose3(Rot3::Rodrigues(0.0, 0.0, PI), Point3(0.0,0.0,0.0));
+                if (abs(yaw_t)>2*PI/3)
+                    cps_pose_t = Pose3(Rot3::Rodrigues(0.0, 0.0, PI), Point3(0.0,0.0,0.0));
+
+                // calculate slant ranges
+                int gra_id_s = corres.at<int>(3) - AllFrames[i].ground_ranges.size();
+                double slant_range_s = sqrt(AllFrames[i].altitudes[id_s]*AllFrames[i].altitudes[id_s] + AllFrames[i].ground_ranges[abs(gra_id_s)]*AllFrames[i].ground_ranges[abs(gra_id_s)]);
+                int gra_id_t = corres.at<int>(5) - AllFrames[j].ground_ranges.size();
+                double slant_range_t = sqrt(AllFrames[j].altitudes[id_t]*AllFrames[j].altitudes[id_t] + AllFrames[j].ground_ranges[abs(gra_id_t)]*AllFrames[j].ground_ranges[abs(gra_id_t)]);
+
+                // noise model
+                auto KP_NOISE_1 = noiseModel::Diagonal::Sigmas(Vector2(sigma_r,slant_range_s*alpha_bw));
+                auto KP_NOISE_2 = noiseModel::Diagonal::Sigmas(Vector2(sigma_r,slant_range_t*alpha_bw));
+
+                // sensor offset
+                Pose3 Ts_s;
+                if (corres.at<int>(3)<AllFrames[i].geo_img[0].cols/2)
+                {
+                    Ts_s = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_stb[0], tf_stb[1], tf_stb[2]));
+                }
+                else
+                {
+                    Ts_s = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_port[0], tf_port[1], tf_port[2]));
+                }
+                Pose3 Ts_t;
+                if (corres.at<int>(5)<AllFrames[j].geo_img[0].cols/2)
+                {
+                    Ts_t = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_stb[0], tf_stb[1], tf_stb[2]));
+                }
+                else
+                {
+                    Ts_t = Pose3(Rot3::Rodrigues(0.0, 0.0, 0.0), Point3(tf_port[0], tf_port[1], tf_port[2]));
+                }
+
+                // ping pose
+                Pose3 p_pose_s = Pose3(Rot3::Rodrigues(AllFrames[i].dr_poses.at<double>(id_s,0), AllFrames[i].dr_poses.at<double>(id_s,1), AllFrames[i].dr_poses.at<double>(id_s,2)), 
+                                Point3(AllFrames[i].dr_poses.at<double>(id_s,3), AllFrames[i].dr_poses.at<double>(id_s,4), AllFrames[i].dr_poses.at<double>(id_s,5)))*cps_pose_s;
+                Pose3 p_pose_t = Pose3(Rot3::Rodrigues(AllFrames[j].dr_poses.at<double>(id_t,0), AllFrames[j].dr_poses.at<double>(id_t,1), AllFrames[j].dr_poses.at<double>(id_t,2)), 
+                                Point3(AllFrames[j].dr_poses.at<double>(id_t,3), AllFrames[j].dr_poses.at<double>(id_t,4), AllFrames[j].dr_poses.at<double>(id_t,5)))*cps_pose_t;
+
+                // initialize point
+                int id_ss = corres.at<int>(3), id_tt = corres.at<int>(5);
+                if (id_ss>=AllFrames[i].geo_img[0].cols || id_tt>=AllFrames[j].geo_img[0].cols)
+                    cout << "column index out of range !!!" << endl;  
+                double x_bar = (AllFrames[i].geo_img[0].at<double>(id_s,id_ss)+AllFrames[j].geo_img[0].at<double>(id_t,id_tt))/2;
+                double y_bar = (AllFrames[i].geo_img[1].at<double>(id_s,id_ss)+AllFrames[j].geo_img[1].at<double>(id_t,id_tt))/2;
+                double z_bar = ( (AllFrames[i].dr_poses.at<double>(id_s,5)-AllFrames[i].altitudes[id_s]) + (AllFrames[j].dr_poses.at<double>(id_t,5)-AllFrames[j].altitudes[id_t]) )/2;
+
+                // triangulate landmark from estimated poses
+                Point3 lm_tri =  Optimizer::TriangulateOneLandmarkSF(slant_range_s,slant_range_t,Ts_s,Ts_t,p_pose_s,p_pose_t,Point3(x_bar, y_bar, z_bar),false);   
+              
+                Point3 lm_tri_s = Ts_s.transformTo( p_pose_s.transformTo(lm_tri) );
+                Point3 lm_tri_t = Ts_t.transformTo( p_pose_t.transformTo(lm_tri) );
+
+                // check if it is an inlier
+                if ((abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2< plane_thres && (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2 < range_thres)
+                {
+                    save_result << lm_tri.x() << " " << lm_tri.y() << " " << lm_tri.z() << endl;
+                }
+                
+            }           
+        }
+    }
+    
+
+    save_result.close();
 
     return;
 }

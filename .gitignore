@@ -179,3 +179,14 @@ build/.cmake/api/v1/reply/codemodel-v2-8bd3ee2e14787bd2bc65.json
 build/.cmake/api/v1/reply/index-2023-09-19T12-45-39-0110.json
 build/.cmake/api/v1/reply/target-patchmatch-Release-56f797540900b483d8c7.json
 build/.cmake/api/v1/reply/target-test_demo-Release-8cb8fced83ef634e4efd.json
+opt_pointclouds_0.1_0.05.csv
+opt_pointclouds_0.2_0.1.csv
+opt_pointclouds_0.3_0.1.csv
+opt_pointclouds_0.7_0.3.csv
+opt_pointclouds_all.csv
+raw_pointclouds_0.1_0.05.csv
+raw_pointclouds_0.2_0.1.csv
+raw_pointclouds_0.3_0.1.csv
+raw_pointclouds_0.7_0.3.csv
+raw_pointclouds_2lines.csv
+raw_pointclouds_all.csv
