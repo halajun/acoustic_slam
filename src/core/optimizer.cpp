@@ -2062,11 +2062,12 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
     return;
 }
 
-void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string &SavePath)
+void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string &SavePath1, std::string &SavePath2)
 {
 
-    ofstream save_result;
-    save_result.open(SavePath.c_str(),ios::trunc);
+    ofstream save_result_1, save_result_2;
+    save_result_1.open(SavePath1.c_str(),ios::trunc);
+    save_result_2.open(SavePath2.c_str(),ios::trunc);
 
     // Noise model parameters for keypoint
     double sigma_r = 0.1, alpha_bw =0.1*PI/180;
@@ -2075,7 +2076,7 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
     Pose3 cps_pose_s = gtsam::Pose3::identity(), cps_pose_t = gtsam::Pose3::identity();
 
     // thresholds
-    float plane_thres = 0.2, range_thres = 0.1;
+    float plane_thres = 0.3, range_thres = 0.1;
 
     // starboard and port offset    
     std::vector<double> tf_stb = AllFrames[0].tf_stb, tf_port = AllFrames[0].tf_port;
@@ -2141,6 +2142,15 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
                 Pose3 p_pose_t = Pose3(Rot3::Rodrigues(AllFrames[j].dr_poses.at<double>(id_t,0), AllFrames[j].dr_poses.at<double>(id_t,1), AllFrames[j].dr_poses.at<double>(id_t,2)), 
                                 Point3(AllFrames[j].dr_poses.at<double>(id_t,3), AllFrames[j].dr_poses.at<double>(id_t,4), AllFrames[j].dr_poses.at<double>(id_t,5)))*cps_pose_t;
 
+                // initial ping pose
+                Pose3 p_pose_s_ini = Pose3(Rot3::Rodrigues(AllFrames[i].ini_poses.at<double>(id_s,0), AllFrames[i].ini_poses.at<double>(id_s,1), AllFrames[i].ini_poses.at<double>(id_s,2)), 
+                                Point3(AllFrames[i].ini_poses.at<double>(id_s,3), AllFrames[i].ini_poses.at<double>(id_s,4), AllFrames[i].ini_poses.at<double>(id_s,5)))*cps_pose_s;
+                Pose3 p_pose_t_ini = Pose3(Rot3::Rodrigues(AllFrames[j].ini_poses.at<double>(id_t,0), AllFrames[j].ini_poses.at<double>(id_t,1), AllFrames[j].ini_poses.at<double>(id_t,2)), 
+                                Point3(AllFrames[j].ini_poses.at<double>(id_t,3), AllFrames[j].ini_poses.at<double>(id_t,4), AllFrames[j].ini_poses.at<double>(id_t,5)))*cps_pose_t;
+
+                // cout << "EST POSE: " << endl << p_pose_s.translation().x() << " " << p_pose_s.translation().y() << " " << p_pose_s.translation().z() << endl;
+                // cout << "INI POSE: " << endl << p_pose_s_ini.translation().x() << " " << p_pose_s_ini.translation().y() << " " << p_pose_s_ini.translation().z() << endl;
+
                 // initialize point
                 int id_ss = corres.at<int>(3), id_tt = corres.at<int>(5);
                 if (id_ss>=AllFrames[i].geo_img[0].cols || id_tt>=AllFrames[j].geo_img[0].cols)
@@ -2148,9 +2158,11 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
                 double x_bar = (AllFrames[i].geo_img[0].at<double>(id_s,id_ss)+AllFrames[j].geo_img[0].at<double>(id_t,id_tt))/2;
                 double y_bar = (AllFrames[i].geo_img[1].at<double>(id_s,id_ss)+AllFrames[j].geo_img[1].at<double>(id_t,id_tt))/2;
                 double z_bar = ( (AllFrames[i].dr_poses.at<double>(id_s,5)-AllFrames[i].altitudes[id_s]) + (AllFrames[j].dr_poses.at<double>(id_t,5)-AllFrames[j].altitudes[id_t]) )/2;
+                double z_bar_ini = ( (AllFrames[i].ini_poses.at<double>(id_s,5)-AllFrames[i].altitudes[id_s]) + (AllFrames[j].ini_poses.at<double>(id_t,5)-AllFrames[j].altitudes[id_t]) )/2;
 
                 // triangulate landmark from estimated poses
                 Point3 lm_tri =  Optimizer::TriangulateOneLandmarkSF(slant_range_s,slant_range_t,Ts_s,Ts_t,p_pose_s,p_pose_t,Point3(x_bar, y_bar, z_bar),false);   
+                Point3 lm_tri_ini =  Optimizer::TriangulateOneLandmarkSF(slant_range_s,slant_range_t,Ts_s,Ts_t,p_pose_s_ini,p_pose_t_ini,Point3(x_bar, y_bar, z_bar_ini),false); 
               
                 Point3 lm_tri_s = Ts_s.transformTo( p_pose_s.transformTo(lm_tri) );
                 Point3 lm_tri_t = Ts_t.transformTo( p_pose_t.transformTo(lm_tri) );
@@ -2158,7 +2170,8 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
                 // check if it is an inlier
                 if ((abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2< plane_thres && (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2 < range_thres)
                 {
-                    save_result << lm_tri.x() << " " << lm_tri.y() << " " << lm_tri.z() << endl;
+                    save_result_1 << lm_tri.x() << " " << lm_tri.y() << " " << lm_tri.z() << endl;
+                    save_result_2 << lm_tri_ini.x() << " " << lm_tri_ini.y() << " " << lm_tri_ini.z() << endl;
                 }
                 
             }           
@@ -2166,7 +2179,8 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
     }
     
 
-    save_result.close();
+    save_result_1.close();
+    save_result_2.close();
 
     return;
 }
