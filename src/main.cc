@@ -197,24 +197,14 @@ int main(int argc, char** argv)
           }
       }
 
-      string path1 = "../opt_pointclouds.csv";
-      string path2 = "../raw_pointclouds.csv";
+      // string path1 = "../opt_pointclouds.csv";
+      // string path2 = "../raw_pointclouds.csv";
 
-      cout << "SAVING POINT CLOUD... " << endl;
-      Optimizer::SaveDensePointClouds(test_frames, path1, path2);
-      cout << "Completed!" << endl;
-    }
-    else
-    {
-        for (size_t i = 0; i < test_frames.size(); i++)
-        {
-          for (size_t j = 0; j < test_frames[i].dr_poses.rows; j++)
-          {
-            cout << "EST POSE: " << endl << test_frames[i].dr_poses.at<double>(j,3) << " " << test_frames[i].dr_poses.at<double>(j,4) << " " << test_frames[i].dr_poses.at<double>(j,5) << endl;
-            cout << "INI POSE: " << endl << test_frames[i].ini_poses.at<double>(j,3) << " " << test_frames[i].ini_poses.at<double>(j,4) << " " << test_frames[i].ini_poses.at<double>(j,5) << endl;
-          }
+      // cout << "SAVING POINT CLOUD... " << endl;
+      // Optimizer::SaveDensePointClouds(test_frames, path1, path2);
+      // cout << "Completed!" << endl;
 
-        }
+      Optimizer::EvaluatePointClouds(test_frames);
 
     }
 
