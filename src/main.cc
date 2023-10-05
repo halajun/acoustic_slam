@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     int KPS_TYPE = 2; // type of keypoint correspodences used: 0:ANNO, 1:SPARSE, 2:DENSE;
     int MIN_MATCHES = 20; // minimum number of matches between subframes to save an edge;
     if (KPS_TYPE == 2)
-        MIN_MATCHES = 500;   
+        MIN_MATCHES = 500;
 
     std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder, strPointCloudFolder;
     // --- read input data paths --- //
@@ -204,7 +204,8 @@ int main(int argc, char** argv)
       // Optimizer::SaveDensePointClouds(test_frames, path1, path2);
       // cout << "Completed!" << endl;
 
-      Optimizer::EvaluatePointClouds(test_frames);
+      Optimizer::SavePointCloudsPerFrame(test_frames);
+      // Optimizer::EvaluatePointClouds(test_frames);
 
     }
 
