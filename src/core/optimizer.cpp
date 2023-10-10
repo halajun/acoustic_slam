@@ -2014,6 +2014,14 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
                                       const std::vector<cv::Mat> &dr_poses_all)
 {
 
+    std::vector<double> Origin(3, 0.0);
+    bool UseGlobalReference = 1;
+    if (UseGlobalReference)
+    {
+        Origin[0] = 650740.0748364895;
+        Origin[1] = 6471475.947234439;
+    }
+
     // --- Save dead-reckoning results --- //
 
     ofstream save_result_1;
@@ -2028,7 +2036,7 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
                     Rot3::Rodrigues(dr_poses_all[i].at<double>(j,0),dr_poses_all[i].at<double>(j,1),dr_poses_all[i].at<double>(j,2)), 
                     Point3(dr_poses_all[i].at<double>(j,3), dr_poses_all[i].at<double>(j,4), dr_poses_all[i].at<double>(j,5)));
             save_result_1 << fixed << setprecision(9) << save_pose.rotation().rpy()(0) << " " << save_pose.rotation().rpy()(1) << " "
-                        << save_pose.rotation().rpy()(2) << " " << save_pose.x() << " " << save_pose.y() << " " << save_pose.z() << endl;
+                        << save_pose.rotation().rpy()(2) << " " << save_pose.x()+Origin[0] << " " << save_pose.y()+Origin[1] << " " << save_pose.z() << endl;
             // save_result_1 << fixed << setprecision(9) << save_pose.rotation().quaternion()(1) << " " << save_pose.rotation().quaternion()(2) << " "
             //             << save_pose.rotation().quaternion()(3) << " " << save_pose.rotation().quaternion()(0) << " " << save_pose.x() << " " 
             //             << save_pose.y() << " " << save_pose.z() << endl;
@@ -2049,7 +2057,7 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
         {
             Pose3 save_pose = FinalEstimate.at<Pose3>(Symbol('X',unique_id[i][j]));
             save_result_2 << fixed << setprecision(9) << save_pose.rotation().rpy()(0) << " " << save_pose.rotation().rpy()(1) << " "
-                        << save_pose.rotation().rpy()(2) << " " << save_pose.x() << " " << save_pose.y() << " " << save_pose.z() << endl;
+                        << save_pose.rotation().rpy()(2) << " " << save_pose.x()+Origin[0] << " " << save_pose.y()+Origin[1] << " " << save_pose.z() << endl;
             // save_result_2 << fixed << setprecision(9) << save_pose.rotation().quaternion()(1) << " " << save_pose.rotation().quaternion()(2) << " "
             //             << save_pose.rotation().quaternion()(3) << " " << save_pose.rotation().quaternion()(0) << " " << save_pose.x() << " " 
             //             << save_pose.y() << " " << save_pose.z() << endl;
@@ -2068,6 +2076,15 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
     ofstream save_result_1, save_result_2;
     save_result_1.open(SavePath1.c_str(),ios::trunc);
     save_result_2.open(SavePath2.c_str(),ios::trunc);
+
+    std::vector<double> Origin(3, 0.0);
+    bool UseGlobalReference = 1;
+    if (UseGlobalReference)
+    {
+        Origin[0] = 650740.0748364895;
+        Origin[1] = 6471475.947234439;
+    }
+    
 
     // Noise model parameters for keypoint
     double sigma_r = 0.1, alpha_bw =0.1*PI/180;
@@ -2170,8 +2187,8 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
                 // check if it is an inlier
                 if ((abs(lm_tri_s.x())+abs(lm_tri_t.x()))/2< plane_thres && (abs(gtsam::norm3(lm_tri_s)-slant_range_s)+abs(gtsam::norm3(lm_tri_t)-slant_range_t))/2 < range_thres)
                 {
-                    save_result_1 << lm_tri.x() << " " << lm_tri.y() << " " << lm_tri.z() << endl;
-                    save_result_2 << lm_tri_ini.x() << " " << lm_tri_ini.y() << " " << lm_tri_ini.z() << endl;
+                    save_result_1 << lm_tri.x()+Origin[0] << " " << lm_tri.y()+Origin[1] << " " << lm_tri.z() << endl;
+                    save_result_2 << lm_tri_ini.x()+Origin[0] << " " << lm_tri_ini.y()+Origin[1] << " " << lm_tri_ini.z() << endl;
                 }
                 
             }           

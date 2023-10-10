@@ -4,6 +4,7 @@
 
 #include<iostream>
 #include <boost/filesystem.hpp>
+#include <algorithm>
 
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -29,6 +30,8 @@ namespace Diasss
     public:
 
         static void AddNoiseToPose(std::vector<cv::Mat> &AllPose);
+
+        static float ComputeIntersection(const std::vector<cv::Mat> &geo_img_s, const std::vector<cv::Mat> &geo_img_t);
 
         static void FrameDividing(Frame &CurFrame, const int &sf_height, const int &KPS_TYPE);
         static void SubFrameAssociating(Frame &SourceFrame, Frame &TargetFrame, const int &MIN_MATCHES, const int &KPS_TYPE);

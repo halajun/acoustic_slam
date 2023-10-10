@@ -211,3 +211,15 @@ pc_per_frame_old/est/est_pc_1.csv
 pc_per_frame_old/est/est_pc_2.csv
 pc_per_frame_old/est/est_pc_3.csv
 pc_per_frame_old/est/est_pc_4.csv
+opt_pointclouds.csv
+raw_pointclouds.csv
+test_data/altitude2/ssh-0052-alti.txt
+test_data/altitude2/ssh-0053-alti.txt
+test_data/altitude2/ssh-0054-alti.txt
+test_data/altitude2/ssh-0055-alti.txt
+test_data/altitude2/ssh-0056-alti.txt
+test_data/groundrange2/ssh-0052-gr.txt
+test_data/groundrange2/ssh-0053-gr.txt
+test_data/groundrange2/ssh-0054-gr.txt
+test_data/groundrange2/ssh-0055-gr.txt
+test_data/groundrange2/ssh-0056-gr.txt
