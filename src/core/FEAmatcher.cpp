@@ -114,7 +114,7 @@ std::vector<cv::Mat> FEAmatcher::IniFlow(Frame &SourceFrame, Frame &TargetFrame)
 
 }
 
-void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
+void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame, int &damping_factor)
 {
     bool PLOT_IMG = 0;
     int count = 0, THRES_crosscheck = 3;
@@ -178,6 +178,7 @@ void FEAmatcher::DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame)
 
     // get final flow from patchmatch
     // --- (Img &u1, Img &u2, int w, Img &off, Img &cost,int minoff, int maxoff,  int iterations, int randomtrials, bool use_horizontal_off) --- //
+    // int patch_size = 26, minoff = 0, maxoff = 10/damping_factor, iterations = 10, randomtrials = 10;
     int patch_size = 13, minoff = 0, maxoff = 5, iterations = 10, randomtrials = 10;
     cout << "(2) processing patch matching..." << endl; 
     struct Img ocost_st(img_s.cols, img_s.rows);

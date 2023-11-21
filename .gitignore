@@ -223,3 +223,270 @@ test_data/groundrange2/ssh-0053-gr.txt
 test_data/groundrange2/ssh-0054-gr.txt
 test_data/groundrange2/ssh-0055-gr.txt
 test_data/groundrange2/ssh-0056-gr.txt
+test_data/altitude3/ssh-0021-alti.txt
+test_data/altitude3/ssh-0022-alti.txt
+test_data/altitude3/ssh-0023-alti.txt
+test_data/altitude3/ssh-0024-alti.txt
+test_data/altitude3/ssh-0025-alti.txt
+test_data/groundrange3/ssh-0021-gr.txt
+test_data/groundrange3/ssh-0022-gr.txt
+test_data/groundrange3/ssh-0023-gr.txt
+test_data/groundrange3/ssh-0024-gr.txt
+test_data/groundrange3/ssh-0025-gr.txt
+test_data/altitude3/ssh-000-alti.txt
+test_data/altitude3/ssh-001-alti.txt
+test_data/altitude3/ssh-002-alti.txt
+test_data/altitude3/ssh-003-alti.txt
+test_data/altitude3/ssh-004-alti.txt
+test_data/altitude3/ssh-005-alti.txt
+test_data/altitude3/ssh-006-alti.txt
+test_data/altitude3/ssh-007-alti.txt
+test_data/groundrange3/ssh-000-gr.txt
+test_data/groundrange3/ssh-001-gr.txt
+test_data/groundrange3/ssh-002-gr.txt
+test_data/groundrange3/ssh-003-gr.txt
+test_data/groundrange3/ssh-004-gr.txt
+test_data/groundrange3/ssh-005-gr.txt
+test_data/groundrange3/ssh-006-gr.txt
+test_data/groundrange3/ssh-007-gr.txt
+pc_per_frame/dr/dr_pc_5.csv
+pc_per_frame/dr/dr_pc_6.csv
+pc_per_frame/dr/dr_pc_7.csv
+pc_per_frame/est/est_pc_5.csv
+pc_per_frame/est/est_pc_6.csv
+pc_per_frame/est/est_pc_7.csv
+results_mission8/pc_per_frame/dr/dr_pc_0.csv
+results_mission8/pc_per_frame/dr/dr_pc_1.csv
+results_mission8/pc_per_frame/dr/dr_pc_2.csv
+results_mission8/pc_per_frame/dr/dr_pc_3.csv
+results_mission8/pc_per_frame/dr/dr_pc_4.csv
+results_mission8/pc_per_frame/dr/dr_pc_5.csv
+results_mission8/pc_per_frame/dr/dr_pc_6.csv
+results_mission8/pc_per_frame/dr/dr_pc_7.csv
+results_mission8/pc_per_frame/est/est_pc_0.csv
+results_mission8/pc_per_frame/est/est_pc_1.csv
+results_mission8/pc_per_frame/est/est_pc_2.csv
+results_mission8/pc_per_frame/est/est_pc_3.csv
+results_mission8/pc_per_frame/est/est_pc_4.csv
+results_mission8/pc_per_frame/est/est_pc_5.csv
+results_mission8/pc_per_frame/est/est_pc_6.csv
+results_mission8/pc_per_frame/est/est_pc_7.csv
+test_data/altitude4/ssh-0040-alti.txt
+test_data/altitude4/ssh-0041-alti.txt
+test_data/altitude4/ssh-0042-alti.txt
+test_data/altitude4/ssh-0043-alti.txt
+test_data/altitude4/ssh-0044-alti.txt
+test_data/altitude4/ssh-0045-alti.txt
+test_data/altitude4/ssh-0046-alti.txt
+test_data/altitude4/ssh-0047-alti.txt
+test_data/altitude4/ssh-0048-alti.txt
+test_data/altitude4/ssh-0049-alti.txt
+test_data/altitude4/ssh-0050-alti.txt
+test_data/altitude4/ssh-0051-alti.txt
+test_data/altitude4/ssh-0052-alti.txt
+test_data/altitude4/ssh-0053-alti.txt
+test_data/groundrange4/ssh-0040-gr.txt
+test_data/groundrange4/ssh-0041-gr.txt
+test_data/groundrange4/ssh-0042-gr.txt
+test_data/groundrange4/ssh-0043-gr.txt
+test_data/groundrange4/ssh-0044-gr.txt
+test_data/groundrange4/ssh-0045-gr.txt
+test_data/groundrange4/ssh-0046-gr.txt
+test_data/groundrange4/ssh-0047-gr.txt
+test_data/groundrange4/ssh-0048-gr.txt
+test_data/groundrange4/ssh-0049-gr.txt
+test_data/groundrange4/ssh-0050-gr.txt
+test_data/groundrange4/ssh-0051-gr.txt
+test_data/groundrange4/ssh-0052-gr.txt
+test_data/groundrange4/ssh-0053-gr.txt
+pc_per_frame/dr/dr_pc_00.csv
+pc_per_frame/dr/dr_pc_01.csv
+pc_per_frame/dr/dr_pc_02.csv
+pc_per_frame/dr/dr_pc_03.csv
+pc_per_frame/dr/dr_pc_04.csv
+pc_per_frame/dr/dr_pc_05.csv
+pc_per_frame/dr/dr_pc_06.csv
+pc_per_frame/dr/dr_pc_07.csv
+pc_per_frame/dr/dr_pc_08.csv
+pc_per_frame/dr/dr_pc_09.csv
+pc_per_frame/dr/dr_pc_10.csv
+pc_per_frame/dr/dr_pc_11.csv
+pc_per_frame/dr/dr_pc_12.csv
+pc_per_frame/dr/dr_pc_13.csv
+pc_per_frame/est/est_pc_00.csv
+pc_per_frame/est/est_pc_01.csv
+pc_per_frame/est/est_pc_02.csv
+pc_per_frame/est/est_pc_03.csv
+pc_per_frame/est/est_pc_04.csv
+pc_per_frame/est/est_pc_05.csv
+pc_per_frame/est/est_pc_06.csv
+pc_per_frame/est/est_pc_07.csv
+pc_per_frame/est/est_pc_08.csv
+pc_per_frame/est/est_pc_09.csv
+pc_per_frame/est/est_pc_10.csv
+pc_per_frame/est/est_pc_11.csv
+pc_per_frame/est/est_pc_12.csv
+pc_per_frame/est/est_pc_13.csv
+pc_per_frame (copy)/dr/dr_pc_00.csv
+pc_per_frame (copy)/dr/dr_pc_01.csv
+pc_per_frame (copy)/dr/dr_pc_02.csv
+pc_per_frame (copy)/dr/dr_pc_03.csv
+pc_per_frame (copy)/dr/dr_pc_04.csv
+pc_per_frame (copy)/dr/dr_pc_05.csv
+pc_per_frame (copy)/dr/dr_pc_06.csv
+pc_per_frame (copy)/dr/dr_pc_07.csv
+pc_per_frame (copy)/dr/dr_pc_08.csv
+pc_per_frame (copy)/dr/dr_pc_09.csv
+pc_per_frame (copy)/dr/dr_pc_10.csv
+pc_per_frame (copy)/dr/dr_pc_11.csv
+pc_per_frame (copy)/dr/dr_pc_12.csv
+pc_per_frame (copy)/dr/dr_pc_13.csv
+pc_per_frame (copy)/est/est_pc_00.csv
+pc_per_frame (copy)/est/est_pc_01.csv
+pc_per_frame (copy)/est/est_pc_02.csv
+pc_per_frame (copy)/est/est_pc_03.csv
+pc_per_frame (copy)/est/est_pc_04.csv
+pc_per_frame (copy)/est/est_pc_05.csv
+pc_per_frame (copy)/est/est_pc_06.csv
+pc_per_frame (copy)/est/est_pc_07.csv
+pc_per_frame (copy)/est/est_pc_08.csv
+pc_per_frame (copy)/est/est_pc_09.csv
+pc_per_frame (copy)/est/est_pc_10.csv
+pc_per_frame (copy)/est/est_pc_11.csv
+pc_per_frame (copy)/est/est_pc_12.csv
+pc_per_frame (copy)/est/est_pc_13.csv
+results_mission86/pc_per_frame/dr/dr_pc_00.csv
+results_mission86/pc_per_frame/dr/dr_pc_01.csv
+results_mission86/pc_per_frame/dr/dr_pc_02.csv
+results_mission86/pc_per_frame/dr/dr_pc_03.csv
+results_mission86/pc_per_frame/dr/dr_pc_04.csv
+results_mission86/pc_per_frame/dr/dr_pc_05.csv
+results_mission86/pc_per_frame/dr/dr_pc_06.csv
+results_mission86/pc_per_frame/dr/dr_pc_07.csv
+results_mission86/pc_per_frame/dr/dr_pc_08.csv
+results_mission86/pc_per_frame/dr/dr_pc_09.csv
+results_mission86/pc_per_frame/dr/dr_pc_10.csv
+results_mission86/pc_per_frame/dr/dr_pc_11.csv
+results_mission86/pc_per_frame/dr/dr_pc_12.csv
+results_mission86/pc_per_frame/dr/dr_pc_13.csv
+results_mission86/pc_per_frame/est/est_pc_00.csv
+results_mission86/pc_per_frame/est/est_pc_01.csv
+results_mission86/pc_per_frame/est/est_pc_02.csv
+results_mission86/pc_per_frame/est/est_pc_03.csv
+results_mission86/pc_per_frame/est/est_pc_04.csv
+results_mission86/pc_per_frame/est/est_pc_05.csv
+results_mission86/pc_per_frame/est/est_pc_06.csv
+results_mission86/pc_per_frame/est/est_pc_07.csv
+results_mission86/pc_per_frame/est/est_pc_08.csv
+results_mission86/pc_per_frame/est/est_pc_09.csv
+results_mission86/pc_per_frame/est/est_pc_10.csv
+results_mission86/pc_per_frame/est/est_pc_11.csv
+results_mission86/pc_per_frame/est/est_pc_12.csv
+results_mission86/pc_per_frame/est/est_pc_13.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_00.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_01.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_02.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_03.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_04.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_05.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_06.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_07.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_08.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_09.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_10.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_11.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_12.csv
+results_mission86_2/pc_per_frame/dr/dr_pc_13.csv
+results_mission86_2/pc_per_frame/est/est_pc_00.csv
+results_mission86_2/pc_per_frame/est/est_pc_01.csv
+results_mission86_2/pc_per_frame/est/est_pc_02.csv
+results_mission86_2/pc_per_frame/est/est_pc_03.csv
+results_mission86_2/pc_per_frame/est/est_pc_04.csv
+results_mission86_2/pc_per_frame/est/est_pc_05.csv
+results_mission86_2/pc_per_frame/est/est_pc_06.csv
+results_mission86_2/pc_per_frame/est/est_pc_07.csv
+results_mission86_2/pc_per_frame/est/est_pc_08.csv
+results_mission86_2/pc_per_frame/est/est_pc_09.csv
+results_mission86_2/pc_per_frame/est/est_pc_10.csv
+results_mission86_2/pc_per_frame/est/est_pc_11.csv
+results_mission86_2/pc_per_frame/est/est_pc_12.csv
+results_mission86_2/pc_per_frame/est/est_pc_13.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_00.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_01.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_02.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_03.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_04.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_05.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_06.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_07.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_08.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_09.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_10.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_11.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_12.csv
+results_mission86_3/pc_per_frame/dr/dr_pc_13.csv
+results_mission86_3/pc_per_frame/est/est_pc_00.csv
+results_mission86_3/pc_per_frame/est/est_pc_01.csv
+results_mission86_3/pc_per_frame/est/est_pc_02.csv
+results_mission86_3/pc_per_frame/est/est_pc_03.csv
+results_mission86_3/pc_per_frame/est/est_pc_04.csv
+results_mission86_3/pc_per_frame/est/est_pc_05.csv
+results_mission86_3/pc_per_frame/est/est_pc_06.csv
+results_mission86_3/pc_per_frame/est/est_pc_07.csv
+results_mission86_3/pc_per_frame/est/est_pc_08.csv
+results_mission86_3/pc_per_frame/est/est_pc_09.csv
+results_mission86_3/pc_per_frame/est/est_pc_10.csv
+results_mission86_3/pc_per_frame/est/est_pc_11.csv
+results_mission86_3/pc_per_frame/est/est_pc_12.csv
+results_mission86_3/pc_per_frame/est/est_pc_13.csv
+results/pc_per_frame/dr/dr_pc_00.csv
+results/pc_per_frame/dr/dr_pc_01.csv
+results/pc_per_frame/dr/dr_pc_02.csv
+results/pc_per_frame/dr/dr_pc_03.csv
+results/pc_per_frame/dr/dr_pc_04.csv
+results/pc_per_frame/est/est_pc_00.csv
+results/pc_per_frame/est/est_pc_01.csv
+results/pc_per_frame/est/est_pc_02.csv
+results/pc_per_frame/est/est_pc_03.csv
+results/pc_per_frame/est/est_pc_04.csv
+results_gullmarsfjord/anno_submap/dr_lmce.txt
+results_gullmarsfjord/anno_submap/est_anno_lmce_2.txt
+results_gullmarsfjord/anno_submap/est_poses_all_anno_2.txt
+results_gullmarsfjord/pc_per_frame/dr/dr_pc_00.csv
+results_gullmarsfjord/pc_per_frame/dr/dr_pc_01.csv
+results_gullmarsfjord/pc_per_frame/dr/dr_pc_02.csv
+results_gullmarsfjord/pc_per_frame/dr/dr_pc_03.csv
+results_gullmarsfjord/pc_per_frame/dr/dr_pc_04.csv
+results_gullmarsfjord/pc_per_frame/est/est_pc_00.csv
+results_gullmarsfjord/pc_per_frame/est/est_pc_01.csv
+results_gullmarsfjord/pc_per_frame/est/est_pc_02.csv
+results_gullmarsfjord/pc_per_frame/est/est_pc_03.csv
+results_gullmarsfjord/pc_per_frame/est/est_pc_04.csv
+results_mission58/pc_per_frame/dr/dr_pc_00.csv
+results_mission58/pc_per_frame/dr/dr_pc_01.csv
+results_mission58/pc_per_frame/dr/dr_pc_02.csv
+results_mission58/pc_per_frame/dr/dr_pc_03.csv
+results_mission58/pc_per_frame/dr/dr_pc_04.csv
+results_mission58/pc_per_frame/dr/dr_pc_05.csv
+results_mission58/pc_per_frame/dr/dr_pc_06.csv
+results_mission58/pc_per_frame/dr/dr_pc_07.csv
+results_mission58/pc_per_frame/dr/dr_pc_08.csv
+results_mission58/pc_per_frame/dr/dr_pc_09.csv
+results_mission58/pc_per_frame/dr/dr_pc_10.csv
+results_mission58/pc_per_frame/dr/dr_pc_11.csv
+results_mission58/pc_per_frame/dr/dr_pc_12.csv
+results_mission58/pc_per_frame/dr/dr_pc_13.csv
+results_mission58/pc_per_frame/est/est_pc_00.csv
+results_mission58/pc_per_frame/est/est_pc_01.csv
+results_mission58/pc_per_frame/est/est_pc_02.csv
+results_mission58/pc_per_frame/est/est_pc_03.csv
+results_mission58/pc_per_frame/est/est_pc_04.csv
+results_mission58/pc_per_frame/est/est_pc_05.csv
+results_mission58/pc_per_frame/est/est_pc_06.csv
+results_mission58/pc_per_frame/est/est_pc_07.csv
+results_mission58/pc_per_frame/est/est_pc_08.csv
+results_mission58/pc_per_frame/est/est_pc_09.csv
+results_mission58/pc_per_frame/est/est_pc_10.csv
+results_mission58/pc_per_frame/est/est_pc_11.csv
+results_mission58/pc_per_frame/est/est_pc_12.csv
+results_mission58/pc_per_frame/est/est_pc_13.csv

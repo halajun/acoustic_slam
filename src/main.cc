@@ -36,12 +36,12 @@ using namespace Diasss;
 
 int main(int argc, char** argv)
 {
-    int SUBFRAME_SIZE = 200; // the height size of subframe to crop;
+    int SUBFRAME_SIZE = 200; // the height size of subframe to crop; 200, 400
     int KPS_TYPE = 2; // type of keypoint correspodences used: 0:ANNO, 1:SPARSE, 2:DENSE;
     int MIN_MATCHES = 20; // minimum number of matches between subframes to save an edge;
     float MIN_OVERLAP = 0.4; // minimum overlap percentage of two frames;
     if (KPS_TYPE == 2)
-        MIN_MATCHES = 500;
+        MIN_MATCHES = 500; // 500, 1000
 
     std::string strImageFolder, strPoseFolder, strAltitudeFolder, strGroundRangeFolder, strAnnotationFolder, strPointCloudFolder;
     // --- read input data paths --- //
@@ -102,20 +102,21 @@ int main(int argc, char** argv)
 
     // --- construct frame --- //
     int test_num = vmImgs.size();
-    // int test_num = 2;
+    // int test_num = 3;
     std::vector<Frame> test_frames;
     for (size_t i = 0; i < test_num; i++)
     {
-        // cout << "constructing frame " << i << " ";
+        cout << "constructing frame " << i << " ";
         test_frames.push_back(Frame(i,vmImgs[i],vmPoses[i],vvAltts[i],vvGranges[i],vmAnnos[i],vmPCs[i]));
-        // cout << "complete!" << endl;
+        cout << "complete!" << endl;
 
     }
 
-    int iter_num = 0, max_iter = 2;
+    int iter_num = 0, max_iter = 2, damping_factor = 0;
     while (iter_num<max_iter)
     {
         iter_num = iter_num + 1;
+        damping_factor = iter_num;
         cout << "------------ Performing the " << iter_num << " iterations..." << endl;
 
         if (iter_num>1)
@@ -142,12 +143,13 @@ int main(int argc, char** argv)
             {
                 float overlap_percentage = Util::ComputeIntersection(test_frames[i].geo_img, test_frames[j].geo_img);
                 cout << "The OVERLAPPING RATE Between image " << i << " and " << j << " : " << overlap_percentage << " ..."<< endl;
+                // if (overlap_percentage>MIN_OVERLAP)
                 if (overlap_percentage>MIN_OVERLAP)
                 {   
                     cout << "perform dense matching between " << i << " and " << j << " ... " << endl;
                     // FEAmatcher::RobustMatching(test_frames[i],test_frames[j]);
                     // FEAmatcher::DenseMatchingS(test_frames[i],test_frames[j]);
-                    FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j]);
+                    FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j],damping_factor);
                     // Util::ShowAnnos(test_frames[i].img_id,test_frames[j].img_id,test_frames[i].norm_img,test_frames[j].norm_img,
                     //     test_frames[i].anno_kps,test_frames[j].anno_kps);
                     cout << "matching completed!" << endl;
@@ -202,7 +204,7 @@ int main(int argc, char** argv)
                 if (overlap_percentage>MIN_OVERLAP)
                 {   
                     cout << "perform dense matching between " << i << " and " << j << " ... " << endl;
-                    FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j]);
+                    FEAmatcher::DenseMatchingD(test_frames[i],test_frames[j],damping_factor);
                     cout << "matching completed!" << endl;
                 }    
           }
@@ -212,9 +214,9 @@ int main(int argc, char** argv)
       string path2 = "../raw_pointclouds.csv";
       cout << "SAVING POINT CLOUD... " << endl;
       Optimizer::SaveDensePointClouds(test_frames, path1, path2);
+      Optimizer::SavePointCloudsPerFrame(test_frames);
       cout << "Completed!" << endl;
 
-      // Optimizer::SavePointCloudsPerFrame(test_frames);
       // Optimizer::EvaluatePointClouds(test_frames);
 
     }

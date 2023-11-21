@@ -23,7 +23,7 @@ namespace Diasss
 
         static void RobustMatching(Frame &SourceFrame, Frame &TargetFrame);
         static void DenseMatchingS(Frame &SourceFrame, Frame &TargetFrame); // S for sparse;
-        static void DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame); // D for dense;
+        static void DenseMatchingD(Frame &SourceFrame, Frame &TargetFrame, int &damping_factor); // D for dense;
 
         static std::vector<cv::Mat> IniFlow(Frame &SourceFrame, Frame &TargetFrame);
 

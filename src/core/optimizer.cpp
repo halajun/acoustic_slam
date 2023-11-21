@@ -1,6 +1,8 @@
 
 #include <bits/stdc++.h>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <random>
 #include <math.h> 
 #include <tuple>
@@ -31,7 +33,7 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
     std::normal_distribution<double> distribution(0.0,1.0);
     double noise_xyz = wgt_3, noise_rpy = wgt_3*PI/180;
     // loop closure thresholds
-    float plane_thres = 0.5, range_thres = 0.3;
+    float plane_thres = 0.5, range_thres = 0.3, edge_error_thres = 50;
 
     // --- assign unique ID for each pose ---//  
     int id_sum = 0;  
@@ -201,7 +203,7 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
 
                         // criterio for adding loop
                         // if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres)
-                        if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres && get<4>(All_LC_tfs[lc_ids[l]])<50.0)
+                        if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres && get<4>(All_LC_tfs[lc_ids[l]])<edge_error_thres)
                         // if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres && get<4>(All_LC_tfs[lc_ids[l]])!=0)
                         // if (get<2>(All_LC_tfs[lc_ids[l]])<plane_thres && get<3>(All_LC_tfs[lc_ids[l]])<range_thres && get<4>(All_LC_tfs[lc_ids[l]])>=0.2)
                         {
@@ -275,6 +277,11 @@ void Optimizer::TrajOptimizationSubMap(std::vector<Frame> &AllFrames)
 
         }
 
+        // string path= "../ssh-" + std::to_string(170+i) + "-pose.xml";
+        // cv::FileStorage fs(path,cv::FileStorage::WRITE);
+        // fs << "auv_pose" << AllFrames[i].dr_poses;
+        // fs.release();
+
         // // also save it to est_poses
         // AllFrames[i].est_poses = AllFrames[i].dr_poses;
 
@@ -314,7 +321,7 @@ tuple<Pose3,Vector6,double,double,double>  Optimizer::LoopClosingSubMapTF(Frame 
     if (SF_src.kps_type==2)
     {
         sample_num = 6;
-        max_iter = 200;
+        max_iter = 200; // 200, 100
     }
 
     // To avoid large angle not able to handle using GTSAM (compensate angle)
@@ -345,6 +352,7 @@ tuple<Pose3,Vector6,double,double,double>  Optimizer::LoopClosingSubMapTF(Frame 
 
     // construct odometry factor to graph      
     double ro_ = 0.1*PI/180, pi_ = 0.1*PI/180, ya_ = 0.5*PI/180, x_ = abs(Tp_st.x()*2), y_ = abs(Tp_st.y()/10), z_ = 0.1;
+    // double ro_ = 0.1*PI/180, pi_ = 0.1*PI/180, ya_ = 0.5*PI/180, x_ = abs(Tp_st.x()*2.5), y_ = abs(Tp_st.y()/8), z_ = 0.1;
     // double ro_ = 0.1*PI/180, pi_ = 0.1*PI/180, ya_ = 0.5*PI/180, x_ = abs(Tp_st.x()/10), y_ = abs(Tp_st.y()/40), z_ = 0.1;
     auto OdometryNoiseModel = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3(ro_, pi_, ya_), Vector3(x_, y_, z_))
                                                     .finished());
@@ -569,9 +577,16 @@ tuple<Pose3,Vector6,double,double,double>  Optimizer::LoopClosingSubMapTF(Frame 
 
         // --- loop for inliers checking --- //
         // cout << "No. " << iter_num << " iteration: " <<  "inlier checking ..." << endl;
-        int check_step = 1;
+        int check_step = 1; // 8,16,24
         if (SF_src.kps_type==2 && sampled_labels.size()>1000)
             check_step = 8;
+        // if (SF_src.kps_type==2 && sampled_labels.size()>1000 && sampled_labels.size()<=10000)
+        //     check_step = 8;
+        // else if (SF_src.kps_type==2 && sampled_labels.size()>10000  && sampled_labels.size()<=40000)
+        //     check_step = 16;
+        // else if (SF_src.kps_type==2 && sampled_labels.size()>40000)
+        //     check_step = 24;
+            
         for (size_t i = 0; i < sampled_labels.size(); i=i+check_step)
         {
             // exclude the sampled IDs
@@ -2015,7 +2030,7 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
 {
 
     std::vector<double> Origin(3, 0.0);
-    bool UseGlobalReference = 1;
+    bool UseGlobalReference = 0;
     if (UseGlobalReference)
     {
         Origin[0] = 650740.0748364895;
@@ -2078,7 +2093,7 @@ void Optimizer::SaveDensePointClouds(std::vector<Frame> &AllFrames, std::string 
     save_result_2.open(SavePath2.c_str(),ios::trunc);
 
     std::vector<double> Origin(3, 0.0);
-    bool UseGlobalReference = 1;
+    bool UseGlobalReference = 0;
     if (UseGlobalReference)
     {
         Origin[0] = 650740.0748364895;
@@ -2209,8 +2224,11 @@ void Optimizer::SavePointCloudsPerFrame(std::vector<Frame> &AllFrames)
 
     for (int i = 0; i < AllFrames.size(); i++)
     {
-        std::string fileNameDR = "../pc_per_frame/dr/dr_pc_" + std::to_string(i) + ".csv";
-        std::string fileNameEST = "../pc_per_frame/est/est_pc_" + std::to_string(i) + ".csv";
+        std::stringstream ss;
+        ss << std::setw(2) << std::setfill('0') << i;
+        std::string s = ss.str();        
+        std::string fileNameDR = "../pc_per_frame/dr/dr_pc_" + s + ".csv";
+        std::string fileNameEST = "../pc_per_frame/est/est_pc_" + s + ".csv";
         save_results_dr.emplace_back(std::ofstream{ fileNameDR });
         save_results_est.emplace_back(std::ofstream{ fileNameEST });
     }
@@ -2222,7 +2240,7 @@ void Optimizer::SavePointCloudsPerFrame(std::vector<Frame> &AllFrames)
     Pose3 cps_pose_s = gtsam::Pose3::identity(), cps_pose_t = gtsam::Pose3::identity();
 
     // thresholds
-    float plane_thres = 0.3, range_thres = 0.1;
+    float plane_thres = 0.3, range_thres = 0.1; // 0.3, 0.1
 
     // starboard and port offset    
     std::vector<double> tf_stb = AllFrames[0].tf_stb, tf_port = AllFrames[0].tf_port;
