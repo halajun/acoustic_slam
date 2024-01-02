@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(patchmatch)
+project(sssslam)
 
 # SETUP A MAKE CLEAN TO CLEAN EVERYTHING
 set_directory_properties (PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES 
@@ -43,7 +43,7 @@ else()
 endif()
 
 # Sources files
-set(patchmatch_SOURCE_FILES
+set(sssslam_SOURCE_FILES
   ${PROJECT_SOURCE_DIR}/src/util/util.cpp
   ${PROJECT_SOURCE_DIR}/src/core/frame.cpp
   ${PROJECT_SOURCE_DIR}/src/core/FEAmatcher.cpp
@@ -55,9 +55,9 @@ set(patchmatch_SOURCE_FILES
   ${PROJECT_SOURCE_DIR}/thirdparty/img.cc
 )
 
-add_library(patchmatch ${patchmatch_SOURCE_FILES})
+add_library(sssslam ${sssslam_SOURCE_FILES})
 
-target_link_libraries(patchmatch gtsam)
+target_link_libraries(sssslam gtsam)
 
 include_directories(
 	${UTILITIES_DIRS}
@@ -78,5 +78,5 @@ link_directories(
 
 # Executable file
 add_executable (test_demo src/main.cc)
-target_link_libraries(test_demo patchmatch ${LIBS} ${OpenCV_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(test_demo sssslam ${LIBS} ${OpenCV_LIBRARIES} ${Boost_LIBRARIES})
 
