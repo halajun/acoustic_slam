@@ -1,6 +1,3 @@
-# acoustic_slam
-A SLAM framework using side-scan and multi-beam sonar (optional)
-
 # A Dense Subframe-based SLAM Framework with Side-scan Sonar
 
 This repository presents a dense subframe-based SLAM framework using side-scan sonar, which is able to improve the accuracy of AUV pose trajectory from dead-reckoning data, and reconstruct a quasi-dense bathymetry of the seabed.
