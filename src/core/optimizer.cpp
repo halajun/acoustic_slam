@@ -2040,7 +2040,7 @@ void Optimizer::SaveTrajactoryAll(const Values &FinalEstimate, const std::vector
     // --- Save dead-reckoning results --- //
 
     ofstream save_result_1;
-    string path1 = "../dr_poses_all.txt";
+    string path1 = "../est_poses_last_iter_all.txt";
     save_result_1.open(path1.c_str(),ios::trunc);
 
     for (size_t i = 0; i < dr_poses_all.size(); i++)
