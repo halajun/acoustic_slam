@@ -8,13 +8,19 @@ namespace Diasss
 using namespace std;
 using namespace cv;
 using namespace gtsam;
+using namespace Eigen;
 
-#define PI 3.14159265359
+#define PI 3.14159265358979323846264
 
 bool SortPairInt(const pair<int,int> &a,
               const pair<int,int> &b)
 {
     return (a.second > b.second);
+}
+
+bool closeEnough(const float& a, const float& b, const float& epsilon = std::numeric_limits<float>::epsilon()) 
+{
+    return (epsilon > std::abs(a - b));
 }
 
 float Util::ComputeIntersection(const std::vector<cv::Mat> &geo_img_s, const std::vector<cv::Mat> &geo_img_t)
@@ -229,61 +235,197 @@ void Util::AddNoiseToPose(std::vector<cv::Mat> &AllPose)
 {
     std::default_random_engine generator;
     std::normal_distribution<double> distribution(0.0,1.0);
-    float noise_yaw = 0.00005; // 0.0005 in rad = 0.0286 in deg
-    Pose3 add_noise(Rot3::Rodrigues(0, 0, distribution(generator)*noise_yaw),Point3(0, 0, 0));
-    Pose3 pose_dr_pre_tmp = Pose3(Rot3::Rodrigues(AllPose[0].at<double>(0,0),AllPose[0].at<double>(0,1),AllPose[0].at<double>(0,2)), 
-                    Point3(AllPose[0].at<double>(0,3), AllPose[0].at<double>(0,4), AllPose[0].at<double>(0,5)));
+    double noise_yaw = 1e-1/10*10; // 0.0005 in rad = 0.0286 in deg
+    int counting = 0, N = 5000;
+    cout << "noise_yaw to be: " << noise_yaw << endl;
+    Matrix4d pose_dr_pre_tmp = Get4x4MatrixfromEulerandPosition(AllPose[0].at<double>(0,0),AllPose[0].at<double>(0,1),AllPose[0].at<double>(0,2), 
+                                                                AllPose[0].at<double>(0,3),AllPose[0].at<double>(0,4),AllPose[0].at<double>(0,5));
 
     for (size_t i = 0; i < AllPose.size(); i++)
     {
         for (size_t j = 0; j < AllPose[i].rows; j++)
         {
+            counting++;
+
             if (i==0 && j==0)
                 continue;                             
 
-            Pose3 pose_dr_cur = Pose3(
-                Rot3::Rodrigues(AllPose[i].at<double>(j,0),AllPose[i].at<double>(j,1),AllPose[i].at<double>(j,2)), 
-                Point3(AllPose[i].at<double>(j,3), AllPose[i].at<double>(j,4), AllPose[i].at<double>(j,5)));
+            Matrix4d pose_dr_cur = Get4x4MatrixfromEulerandPosition(
+                AllPose[i].at<double>(j,0),AllPose[i].at<double>(j,1),AllPose[i].at<double>(j,2), 
+                AllPose[i].at<double>(j,3),AllPose[i].at<double>(j,4),AllPose[i].at<double>(j,5));
 
-            Pose3 pose_dr_pre;
+            Matrix4d pose_dr_pre;
             // if it's the first pose BUT NOT the first image, get previous pose from last image
             if (i!=0 && j==0)
             {
                 int id = AllPose[i-1].rows - 1;
-                pose_dr_pre = Pose3(
-                    Rot3::Rodrigues(AllPose[i-1].at<double>(id,0),AllPose[i-1].at<double>(id,1),AllPose[i-1].at<double>(id,2)), 
-                    Point3(AllPose[i-1].at<double>(id,3), AllPose[i-1].at<double>(id,4), AllPose[i-1].at<double>(id,5)));
+                pose_dr_pre = Get4x4MatrixfromEulerandPosition(
+                    AllPose[i-1].at<double>(id,0),AllPose[i-1].at<double>(id,1),AllPose[i-1].at<double>(id,2), 
+                    AllPose[i-1].at<double>(id,3),AllPose[i-1].at<double>(id,4),AllPose[i-1].at<double>(id,5));
                 
             }
             // otherwise, get previous pose from last ping
             else
             {
-                pose_dr_pre = Pose3(
-                    Rot3::Rodrigues(AllPose[i].at<double>(j-1,0),AllPose[i].at<double>(j-1,1),AllPose[i].at<double>(j-1,2)), 
-                    Point3(AllPose[i].at<double>(j-1,3), AllPose[i].at<double>(j-1,4), AllPose[i].at<double>(j-1,5)));
+                pose_dr_pre = Get4x4MatrixfromEulerandPosition(
+                    AllPose[i].at<double>(j-1,0),AllPose[i].at<double>(j-1,1),AllPose[i].at<double>(j-1,2), 
+                    AllPose[i].at<double>(j-1,3),AllPose[i].at<double>(j-1,4),AllPose[i].at<double>(j-1,5));
             }
 
-            Pose3 odo = pose_dr_pre_tmp.between(pose_dr_cur);
-            Pose3 odo_noise = add_noise.compose(odo);
-            Pose3 pose_dr_cur_noisy = pose_dr_pre.compose(odo_noise);
+            double new_yaw_noise = distribution(generator)*noise_yaw;
+            Matrix4d add_noise = Get4x4MatrixfromEulerandPosition(0.0,0.0,new_yaw_noise,0.0, 0.0, 0.0);
+            // if (i==0 && j<N)
+            //     cout << "add_noise: " << endl << add_noise << endl;
+            // // only add noise per 4 pings (sensor scan rate: 4 ping/sec)
+            // if (counting%5==0||true) // 5 (1e-4), 10 (5e-5), 15 (2.5e-5), 20 (0.75e-4), 25 (0.375e-4),...
+            // {
+            //     cout << "Time to add noise at ping: " << counting << " with noise of " << new_yaw_noise << endl;
+            //     Pose3 odo = pose_dr_pre.transformPoseTo(pose_dr_cur);
+            //     nosiy_odo = odo.transformPoseFrom(add_noise); 
+            // }
+            // pose_dr_pre_noisy = pose_dr_pre; 
+            Matrix4d odo = GetInverseMatrix4d(pose_dr_pre_tmp)*pose_dr_cur;
+            // if (i==0 && j<N)            
+            //         cout << "pose_dr_pre_tmp: " << endl << pose_dr_pre_tmp.matrix() << endl;
+            // if (i==0 && j<N)            
+            //         cout << "pose_dr_pre: " << endl << pose_dr_pre.matrix() << endl;
+            Matrix4d pose_dr_cur_tmp = pose_dr_pre*odo;
+            // if (i==0 && j<N)
+            //     cout << "pose_dr_cur: " << endl << pose_dr_cur << endl;
+            Matrix4d pose_dr_cur_noisy = pose_dr_cur_tmp*add_noise; 
+            // // Matrix4d pose_dr_cur_noisy = pose_dr_cur;  
+            // if (i==0 && j<N)
+            //     cout << "pose_dr_cur_noisy: " << endl << pose_dr_cur_noisy << endl;
 
 
-            // update current pose with noise
-            AllPose[i].at<double>(j,0) = pose_dr_cur_noisy.rotation().roll();
-            AllPose[i].at<double>(j,1) = pose_dr_cur_noisy.rotation().pitch();
-            AllPose[i].at<double>(j,2) = pose_dr_cur_noisy.rotation().yaw();
-            AllPose[i].at<double>(j,3) = pose_dr_cur_noisy.x();
-            AllPose[i].at<double>(j,4) = pose_dr_cur_noisy.y();
-            AllPose[i].at<double>(j,5) = pose_dr_cur_noisy.z();
+            AllPose[i].at<double>(j,2) = AllPose[i].at<double>(j,2) + new_yaw_noise;
+            AllPose[i].at<double>(j,3) = pose_dr_cur_noisy(0,3);
+            AllPose[i].at<double>(j,4) = pose_dr_cur_noisy(1,3);
+            AllPose[i].at<double>(j,5) = pose_dr_cur_noisy(2,3);
 
             // save pose_dr_cur to pre_tmp
             pose_dr_pre_tmp = pose_dr_cur;
 
+
         }
     }
 
+    // --- Save noisy pose results --- //
+    ofstream save_result_1;
+    string path1 = "../dr_poses_noisy_all.txt";
+    save_result_1.open(path1.c_str(),ios::trunc);
+
+    for (size_t i = 0; i < AllPose.size(); i++)
+    {
+        for (size_t j = 0; j < AllPose[i].rows; j++)
+        {
+            Pose3 save_pose = Pose3(
+                    Rot3::Rodrigues(AllPose[i].at<double>(j,0),AllPose[i].at<double>(j,1),AllPose[i].at<double>(j,2)), 
+                    Point3(AllPose[i].at<double>(j,3), AllPose[i].at<double>(j,4), AllPose[i].at<double>(j,5)));
+            save_result_1 << fixed << setprecision(9) << save_pose.rotation().rpy()(0) << " " << save_pose.rotation().rpy()(1) << " "
+                        << save_pose.rotation().rpy()(2) << " " << save_pose.x() << " " << save_pose.y() << " " << save_pose.z() << endl;
+
+        }
+    }
+
+    save_result_1.close();
+    // --------- end with saving ----------- //
+
     return;
 }
+
+gtsam::Quaternion Util::GetQuaternionfromEuler(const double &roll, const double &pitch, const double &yaw)
+{
+
+    // """
+    // Convert an Euler angle to a quaternion.
+    
+    // Input
+    //     :param roll: The roll (rotation around x-axis) angle in radians.
+    //     :param pitch: The pitch (rotation around y-axis) angle in radians.
+    //     :param yaw: The yaw (rotation around z-axis) angle in radians.
+    
+    // Output
+    //     :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
+    // """
+
+    double qx = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
+    double qy = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
+    double qz = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
+    double qw = cos(roll/2) * cos(pitch/2) * cos(yaw/2) + sin(roll/2) * sin(pitch/2) * sin(yaw/2);
+    
+    return gtsam::Quaternion(qw, qx, qy, qz);
+
+}
+
+Eigen::Matrix4d Util::Get4x4MatrixfromEulerandPosition(const double &roll, const double &pitch, const double &yaw,
+                                                       const double &x, const double &y, const double &z)
+{
+
+    Eigen::Matrix3d R;
+
+    R = AngleAxisd(roll*PI, Vector3d::UnitX())
+    * AngleAxisd(pitch*PI, Vector3d::UnitY())
+    * AngleAxisd(yaw*PI, Vector3d::UnitZ());
+
+    Eigen::Matrix4d output;
+
+    output <<   R(0,0), R(0,1), R(0,2), x,
+                R(1,0), R(1,1), R(1,2), y,
+                R(2,0), R(2,1), R(2,2), z,
+                0.0, 0.0, 0.0, 1.0;
+
+    return output;
+}
+
+Eigen::Matrix4d Util::GetInverseMatrix4d(const Eigen::Matrix4d &input)
+{
+
+
+    Eigen::Matrix3d R = input.block<3, 3>(0, 0);
+    Eigen::Matrix3d R_rotate = R.transpose();
+    Eigen::Vector3d trans;
+    trans << input(0, 3), input(1, 3), input(2, 3);
+    Eigen::Vector3d trans_inv = -R_rotate*trans;
+
+    Eigen::Matrix4d output;
+
+    output <<   R_rotate(0,0), R_rotate(0,1), R_rotate(0,2), trans_inv(0),
+                R_rotate(1,0), R_rotate(1,1), R_rotate(1,2), trans_inv(1),
+                R_rotate(2,0), R_rotate(2,1), R_rotate(2,2), trans_inv(2),
+                0.0, 0.0, 0.0, 1.0;
+
+    return output;
+}
+
+Eigen::Vector3d Util::GetEulerAnglesfromRotation(const Eigen::Matrix3d R)
+{
+    double roll, pitch, yaw;
+
+    // Assuming the angles are in radians.
+    if (R(1,0) > 0.99998) { // singularity at north pole
+        roll = 0;
+        pitch = PI/2;
+        yaw = atan2(R(0,2),R(2,2));
+    }
+    else if (R(1,0) < -0.99998) { // singularity at south pole
+        roll = 0;
+        pitch = -PI/2;
+        yaw = atan2(R(0,2),R(2,2));
+    }
+    else
+    {
+        roll = atan2(-R(1,2),R(1,1));
+        pitch = asin(R(1,0));
+        yaw = atan2(-R(2,0),R(0,0));
+    }
+
+    Eigen::Vector3d euler;
+    euler << roll, pitch, yaw;
+    return euler;
+ 
+}
+
 
 
 void Util::LoadInputData(const std::string &strImageFolder, const std::string &strPoseFolder, const std::string &strAltitudeFolder, 

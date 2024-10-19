@@ -5,9 +5,11 @@
 #include<iostream>
 #include <boost/filesystem.hpp>
 #include <algorithm>
+#include <limits>
 
 #include <Eigen/Dense>
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core.hpp>
@@ -16,6 +18,7 @@
 #include <gtsam/base/Matrix.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Quaternion.h>
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "subframe.h"
@@ -29,6 +32,11 @@ namespace Diasss
     {
     public:
 
+        static gtsam::Quaternion GetQuaternionfromEuler(const double &roll, const double &pitch, const double &yaw);
+        static Eigen::Matrix4d Get4x4MatrixfromEulerandPosition(const double &roll, const double &pitch, const double &yaw,
+                                                            const double &x, const double &y, const double &z);
+        static Eigen::Matrix4d GetInverseMatrix4d(const Eigen::Matrix4d &input);
+        static Eigen::Vector3d GetEulerAnglesfromRotation(const Eigen::Matrix3d R);
         static void AddNoiseToPose(std::vector<cv::Mat> &AllPose);
 
         static float ComputeIntersection(const std::vector<cv::Mat> &geo_img_s, const std::vector<cv::Mat> &geo_img_t);
